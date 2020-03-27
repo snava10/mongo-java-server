@@ -40,6 +40,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonJavaScript;
 import org.bson.BsonObjectId;
@@ -79,6 +80,7 @@ import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcern;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.bulk.BulkWriteUpsert;
+import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -100,6 +102,8 @@ import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.Updates;
 import com.mongodb.client.model.WriteModel;
+import com.mongodb.client.model.changestream.ChangeStreamDocument;
+import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import com.mongodb.reactivestreams.client.Success;
@@ -141,6 +145,33 @@ public abstract class AbstractBackendTest extends AbstractTest {
     @Test
     public void testSimpleInsert() throws Exception {
         collection.insertOne(json("_id: 1"));
+    }
+
+    @Test
+    public void testChangeStreamsResumeToken() {
+        ChangeStreamIterable<Document> iterable = collection.watch();
+        BsonDocument bsonDocument = new BsonDocument();
+        collection.insertOne(new Document("name", "testUser1"));
+//        while(iterable.cursor().hasNext()) {
+//              = iterable.cursor().next();
+//            assertThat(c).isNotNull();
+//        }
+        Document d = collection.find().first();
+        for (ChangeStreamDocument<Document> documentChangeStreamDocument : iterable) {
+            BsonDocument resumeToken = documentChangeStreamDocument.getResumeToken();
+            assertThat(resumeToken.get("_id").asObjectId().getValue()).isEqualTo(d.get("_id"));
+        }
+    }
+
+    @Test
+    public void testChangeStreamsFullDocument() {
+        collection.insertOne(new Document("name", "testUser1"));
+        MongoCursor<ChangeStreamDocument<Document>> cursor = collection.watch().iterator();
+        while(cursor.hasNext()) {
+            ChangeStreamDocument<Document> next = cursor.next();
+            Document doc = next.getFullDocument();
+            assertThat(doc).isNotNull();
+        }
     }
 
     @Test

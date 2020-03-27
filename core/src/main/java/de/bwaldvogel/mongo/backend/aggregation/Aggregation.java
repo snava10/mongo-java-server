@@ -139,6 +139,14 @@ public class Aggregation {
                 case "$indexStats":
                     aggregation.addStage(new IndexStatsStage(collection));
                     break;
+                case "$changeStream":
+                    aggregation.addStage(stream -> stream.map(document -> {
+                        Document res = new Document();
+                        res.append("_id", new Document("_id", document.get("_id")));
+                        res.append("fullDocument", document);
+                        return res;
+                    }));
+                    break;
                 default:
                     throw new MongoServerError(40324, "Unrecognized pipeline stage name: '" + stageOperation + "'");
             }

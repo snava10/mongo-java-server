@@ -252,6 +252,8 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
             try {
                 insertDocuments(channel, collectionName, Collections.singletonList(document));
                 n++;
+                log.debug("Document with id: {} has been inserted, we should write now to the oplog.", document.get("_id"));
+                // Todo: Write to the oppLog collection
             } catch (MongoServerError e) {
                 Document error = new Document();
                 error.put("index", Integer.valueOf(n));
