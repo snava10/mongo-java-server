@@ -143,7 +143,7 @@ public class Aggregation {
                     aggregation.addStage(stream -> stream.map(document -> {
                         Document res = new Document();
                         res.append("_id", new Document("_id", document.get("_id")));
-                        res.append("fullDocument", document);
+                        res.append("fullDocument", document.get("o"));
                         return res;
                     }));
                     break;

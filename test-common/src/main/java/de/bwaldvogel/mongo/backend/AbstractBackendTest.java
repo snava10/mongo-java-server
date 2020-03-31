@@ -148,29 +148,17 @@ public abstract class AbstractBackendTest extends AbstractTest {
     }
 
     @Test
-    public void testChangeStreamsResumeToken() {
+    public void testSimpleChangeStreams() {
         ChangeStreamIterable<Document> iterable = collection.watch();
-        BsonDocument bsonDocument = new BsonDocument();
         collection.insertOne(new Document("name", "testUser1"));
-//        while(iterable.cursor().hasNext()) {
-//              = iterable.cursor().next();
-//            assertThat(c).isNotNull();
-//        }
-        Document d = collection.find().first();
+        Iterable<Document> iter = collection.find();
+        Document d = iter.iterator().next();
         for (ChangeStreamDocument<Document> documentChangeStreamDocument : iterable) {
-            BsonDocument resumeToken = documentChangeStreamDocument.getResumeToken();
-            assertThat(resumeToken.get("_id").asObjectId().getValue()).isEqualTo(d.get("_id"));
-        }
-    }
-
-    @Test
-    public void testChangeStreamsFullDocument() {
-        collection.insertOne(new Document("name", "testUser1"));
-        MongoCursor<ChangeStreamDocument<Document>> cursor = collection.watch().iterator();
-        while(cursor.hasNext()) {
-            ChangeStreamDocument<Document> next = cursor.next();
-            Document doc = next.getFullDocument();
+//            BsonDocument resumeToken = documentChangeStreamDocument.getResumeToken();
+//            assertThat(resumeToken.get("_id").asObjectId().getValue()).isEqualTo(d.get("_id"));
+            Document doc = documentChangeStreamDocument.getFullDocument();
             assertThat(doc).isNotNull();
+            assertThat(doc).isEqualTo(d);
         }
     }
 
@@ -1701,9 +1689,9 @@ public abstract class AbstractBackendTest extends AbstractTest {
     public void testListDatabaseNames() throws Exception {
         assertThat(listDatabaseNames()).isEmpty();
         collection.insertOne(json(""));
-        assertThat(listDatabaseNames()).containsExactly(db.getName());
+        assertThat(listDatabaseNames()).containsExactlyInAnyOrder(db.getName(), "local");
         getDatabase().getCollection("some-collection").insertOne(json(""));
-        assertThat(listDatabaseNames()).containsExactly("bar", db.getName());
+        assertThat(listDatabaseNames()).containsExactlyInAnyOrder("bar", db.getName(), "local");
     }
 
     private MongoDatabase getDatabase() {
