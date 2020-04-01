@@ -17,8 +17,10 @@ import static de.bwaldvogel.mongo.backend.TestUtils.date;
 import static de.bwaldvogel.mongo.backend.TestUtils.getCollectionStatistics;
 import static de.bwaldvogel.mongo.backend.TestUtils.instant;
 import static de.bwaldvogel.mongo.backend.TestUtils.json;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.util.Arrays.asList;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -84,6 +86,7 @@ import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.CountOptions;
 import com.mongodb.client.model.CreateCollectionOptions;
@@ -149,10 +152,15 @@ public abstract class AbstractBackendTest extends AbstractTest {
 
     @Test
     public void testSimpleChangeStreams() {
-        ChangeStreamIterable<Document> iterable = collection.watch();
+        List<Bson> pipeline = singletonList(Aggregates.match(Filters.or(
+            Document.parse("{'fullDocument.name': 'testUser1'}")))
+        );
+
+        ChangeStreamIterable<Document> iterable = collection.watch(pipeline);
         collection.insertOne(new Document("name", "testUser1"));
         Iterable<Document> iter = collection.find();
         Document d = iter.iterator().next();
+        assertThat(iterable.iterator().hasNext()).isTrue();
         for (ChangeStreamDocument<Document> documentChangeStreamDocument : iterable) {
 //            BsonDocument resumeToken = documentChangeStreamDocument.getResumeToken();
 //            assertThat(resumeToken.get("_id").asObjectId().getValue()).isEqualTo(d.get("_id"));
@@ -2477,7 +2485,7 @@ public abstract class AbstractBackendTest extends AbstractTest {
 
         collection.updateOne(obj, pull("field", "value1"));
 
-        assertThat(collection.find(obj).first().get("field")).isEqualTo(Collections.singletonList("value2"));
+        assertThat(collection.find(obj).first().get("field")).isEqualTo(singletonList("value2"));
 
         // pull with multiple fields
 
@@ -2487,7 +2495,7 @@ public abstract class AbstractBackendTest extends AbstractTest {
         collection.updateOne(obj, json("$pull: {field1: 'value2', field2: 'value3'}"));
 
         assertThat(collection.find(obj).first().get("field1")).isEqualTo(Arrays.asList("value1", "value1"));
-        assertThat(collection.find(obj).first().get("field2")).isEqualTo(Collections.singletonList("value1"));
+        assertThat(collection.find(obj).first().get("field2")).isEqualTo(singletonList("value1"));
     }
 
     @Test
@@ -4188,7 +4196,7 @@ public abstract class AbstractBackendTest extends AbstractTest {
         collection.insertOne(new Document("_id", new ObjectId("52350353b2eff1353b349de9"))
             .append("code", "ijk")
             .append("tags", Arrays.asList("electronics", "school"))
-            .append("qty", Collections.singletonList(
+            .append("qty", singletonList(
                 new Document().append("size", "M").append("num", 100).append("color", "green")
             )));
 
@@ -5205,7 +5213,7 @@ public abstract class AbstractBackendTest extends AbstractTest {
 
     private void removeInBulk(boolean ordered) {
         DeleteManyModel<Document> deleteOp = new DeleteManyModel<>(json("field: 'y'"));
-        BulkWriteResult result = collection.bulkWrite(Collections.singletonList(deleteOp),
+        BulkWriteResult result = collection.bulkWrite(singletonList(deleteOp),
             new BulkWriteOptions().ordered(ordered));
 
         assertThat(result.getDeletedCount()).isEqualTo(3);

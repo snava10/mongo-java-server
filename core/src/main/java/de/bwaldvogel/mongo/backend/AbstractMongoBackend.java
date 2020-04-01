@@ -238,24 +238,37 @@ public abstract class AbstractMongoBackend implements MongoBackend {
         if (databaseName.equals("admin")) {
             return handleAdminCommand(command, query);
         } else if(query.containsKey("pipeline") && ((Document)((ArrayList)query.get("pipeline")).get(0)).containsKey("$changeStream")) {
+            // Change streams aggregation.
+            // Modifying the pipeline to include a match query on database.collection
+            Document nsMatch = new Document(
+                "$match",
+                new Document("namespaceDocument", String.format("%s.%s", databaseName, query.get("aggregate")))
+            );
+            ArrayList<Document> pipeline = (ArrayList<Document>)query.get("pipeline");
+            pipeline.add(1, nsMatch);
+            query.put("pipeline", pipeline);
+
+            // Querying the oplog
             MongoDatabase db = resolveDatabase("local");
             query.put("aggregate", "oplog.rs");
             Document doc = db.handleCommand(channel, command, query);
+
             return doc;
         } else {
             MongoDatabase db = resolveDatabase(databaseName);
             Document doc = db.handleCommand(channel, command, query);
-            writeToOpLog(channel, command, query);
+            writeToOpLog(channel, command, query, databaseName);
             return doc;
         }
     }
 
-    private void writeToOpLog(Channel channel, String command, Document query) {
-        if (command.equals("insert")) {
+    private void writeToOpLog(Channel channel, String command, Document query, String databaseName) {
+         if (command.equals("insert")) {
             List<Document> documents = (List<Document>) query.get("documents");
             List<Document> oplogDocuments = documents.stream().map(d -> OplogDocument.builder()
                 .operationType(OperationType.d)
                 .document(d)
+                .namespace(String.format("%s.%s", databaseName, query.get("insert")))
                 .build().toDocument()).collect(Collectors.toList());
             MongoInsert mongoInsert = new MongoInsert(channel, null, "local.oplog.rs",
                 oplogDocuments

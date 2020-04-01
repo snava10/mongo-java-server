@@ -1,6 +1,7 @@
 package de.bwaldvogel.mongo.oplog;
 
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 
 import de.bwaldvogel.mongo.bson.BsonTimestamp;
@@ -65,5 +66,20 @@ public class OplogDocumentBuilder {
 
     public OplogDocument build() {
         return oplogDocument;
+    }
+
+    public OplogDocumentBuilder oplogDocument(Document doc) {
+        oplogDocument = new OplogDocument();
+        oplogDocument.setTs(Optional.ofNullable((BsonTimestamp)doc.get("ts")).orElse(null));
+        oplogDocument.setT(Optional.ofNullable((Long)doc.get("l")).orElse(0L));
+        oplogDocument.setH(Optional.ofNullable((Long)doc.get("h")).orElse(0L));
+        oplogDocument.setV(Optional.ofNullable((Long)doc.get("v")).orElse(0L));
+        oplogDocument.setOp(Optional.ofNullable((String)doc.get("op")).map(OperationType::valueOf).orElse(null));
+        oplogDocument.setNs(Optional.ofNullable((String)doc.get("ns")).orElse(null));
+        oplogDocument.setUi(Optional.ofNullable((UUID)doc.get("ui")).orElse(null));
+        oplogDocument.setWall(Optional.ofNullable((LocalDate)doc.get("wall")).orElse(null));
+        oplogDocument.setO2(Optional.ofNullable((Document)doc.get("o2")).orElse(null));
+        oplogDocument.setO(Optional.ofNullable((Document)doc.get("o")).orElse(null));
+        return this;
     }
 }

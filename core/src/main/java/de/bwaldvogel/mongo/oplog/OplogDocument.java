@@ -1,8 +1,6 @@
 package de.bwaldvogel.mongo.oplog;
 
-import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDate;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -32,6 +30,24 @@ public class OplogDocument implements Bson {
                         doc.put(m.getName().substring(3).toLowerCase(), m.invoke(this).toString());
                     } else {
                         doc.put(m.getName().substring(3).toLowerCase(), m.invoke(this));
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        );
+        return doc;
+    }
+
+    public Document toChangeStreamDocument() {
+        Document doc = new Document();
+        Stream.of(this.getClass().getMethods()).filter(m -> m.isAnnotationPresent(Getter.class)).forEach(
+            m -> {
+                try {
+                    if (m.getReturnType().equals(OperationType.class)) {
+                        doc.put(m.getAnnotation(Getter.class).name(), m.invoke(this).toString());
+                    } else {
+                        doc.put(m.getAnnotation(Getter.class).name(), m.invoke(this));
                     }
                 } catch (Exception e) {
                     throw new RuntimeException(e);
@@ -90,7 +106,7 @@ public class OplogDocument implements Bson {
         this.op = op;
     }
 
-    @Getter
+    @Getter(name="namespaceDocument")
     public String getNs() {
         return ns;
     }
@@ -117,7 +133,7 @@ public class OplogDocument implements Bson {
         this.wall = wall;
     }
 
-    @Getter
+    @Getter(name="fullDocument")
     public Document getO() {
         return o;
     }

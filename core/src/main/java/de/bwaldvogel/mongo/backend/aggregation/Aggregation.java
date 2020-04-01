@@ -32,6 +32,8 @@ import de.bwaldvogel.mongo.backend.aggregation.stage.UnwindStage;
 import de.bwaldvogel.mongo.bson.Document;
 import de.bwaldvogel.mongo.exception.MongoServerError;
 import de.bwaldvogel.mongo.exception.TypeMismatchException;
+import de.bwaldvogel.mongo.oplog.OplogDocument;
+import de.bwaldvogel.mongo.oplog.OplogDocumentBuilder;
 
 public class Aggregation {
 
@@ -141,10 +143,13 @@ public class Aggregation {
                     break;
                 case "$changeStream":
                     aggregation.addStage(stream -> stream.map(document -> {
-                        Document res = new Document();
-                        res.append("_id", new Document("_id", document.get("_id")));
-                        res.append("fullDocument", document.get("o"));
-                        return res;
+                        OplogDocument oplogDoc = OplogDocument.builder().oplogDocument(document).build();
+                        Document doc = oplogDoc.toChangeStreamDocument();
+
+                        // This get translated as the resume token.
+                        doc.append("_id", new Document("_id", document.get("_id")));
+
+                        return doc;
                     }));
                     break;
                 default:
