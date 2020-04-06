@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 import de.bwaldvogel.mongo.MongoDatabase;
 import de.bwaldvogel.mongo.backend.AbstractMongoCollection;
 import de.bwaldvogel.mongo.backend.DocumentWithPosition;
+import de.bwaldvogel.mongo.backend.QueryResult;
 import de.bwaldvogel.mongo.bson.Document;
 import de.bwaldvogel.mongo.exception.DuplicateKeyError;
 import de.bwaldvogel.mongo.exception.MongoServerException;
@@ -48,7 +49,7 @@ public class PostgresqlCollection extends AbstractMongoCollection<Long> {
     }
 
     @Override
-    protected Iterable<Document> matchDocuments(Document query, Document orderBy, int numberToSkip, int numberToReturn) {
+    protected QueryResult<Document> matchDocuments(Document query, Document orderBy, int numberToSkip, int numberToReturn, boolean createCursor) {
         Collection<Document> matchedDocuments = new ArrayList<>();
 
         int numMatched = 0;
@@ -78,7 +79,7 @@ public class PostgresqlCollection extends AbstractMongoCollection<Long> {
             throw new MongoServerException("failed to query " + this, e);
         }
 
-        return matchedDocuments;
+        return new QueryResult<>(matchedDocuments, numMatched - numberToSkip, 0);
     }
 
     static String convertOrderByToSql(Document orderBy) {
@@ -120,7 +121,7 @@ public class PostgresqlCollection extends AbstractMongoCollection<Long> {
     }
 
     @Override
-    protected Iterable<Document> matchDocuments(Document query, Iterable<Long> positions, Document orderBy, int numberToSkip, int numberToReturn) {
+    protected QueryResult<Document> matchDocuments(Document query, Iterable<Long> positions, Document orderBy, int numberToSkip, int numberToReturn, boolean createCursor) {
         throw new UnsupportedOperationException("not yet implemented");
     }
 

@@ -36,7 +36,7 @@ public class MongoWireEncoderTest {
     void testExceptionHandling() throws Exception {
         MongoWireEncoder mongoWireEncoder = new MongoWireEncoder();
 
-        MessageHeader header = new MessageHeader(0, 0);
+        MessageHeader header = new MessageHeader(0, 0, OpCode.OP_QUERY.getId());
         MongoReply reply = new MongoReply(header, new Document("key", Missing.getInstance()));
 
         assertThatExceptionOfType(IllegalArgumentException.class)

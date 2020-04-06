@@ -5,13 +5,16 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import de.bwaldvogel.mongo.MongoDatabase;
 import de.bwaldvogel.mongo.backend.AbstractMongoCollection;
+import de.bwaldvogel.mongo.backend.Cursor;
 import de.bwaldvogel.mongo.backend.DocumentComparator;
 import de.bwaldvogel.mongo.backend.DocumentWithPosition;
+import de.bwaldvogel.mongo.backend.QueryResult;
 import de.bwaldvogel.mongo.bson.Document;
 
 public class MemoryCollection extends AbstractMongoCollection<Integer> {
@@ -50,7 +53,7 @@ public class MemoryCollection extends AbstractMongoCollection<Integer> {
     }
 
     @Override
-    protected Iterable<Document> matchDocuments(Document query, Document orderBy, int numberToSkip, int numberToReturn) {
+    protected QueryResult<Document> matchDocuments(Document query, Document orderBy, int numberToSkip, int numberToReturn, boolean createCursor) {
         List<Document> matchedDocuments = new ArrayList<>();
 
         for (Document document : iterateAllDocuments(orderBy)) {
@@ -64,8 +67,16 @@ public class MemoryCollection extends AbstractMongoCollection<Integer> {
             matchedDocuments.sort(documentComparator);
         }
 
-        return applySkipAndLimit(matchedDocuments, numberToSkip, numberToReturn);
+        Cursor cursor = null;
+        if (matchedDocuments.size() > numberToReturn) {
+            cursor = new Cursor(matchedDocuments.stream().skip(numberToReturn).collect(Collectors.toList()), getCollectionName());
+            cursors.put(cursor.getCursorId(), cursor);
+        }
+
+        return new QueryResult<>(applySkipAndLimit(matchedDocuments, numberToSkip, numberToReturn), matchedDocuments.size(),
+            cursor == null ? 0 : cursor.getCursorId());
     }
+
 
     private Iterable<Document> iterateAllDocuments(Document orderBy) {
         DocumentIterable documentIterable = new DocumentIterable(this.documents);

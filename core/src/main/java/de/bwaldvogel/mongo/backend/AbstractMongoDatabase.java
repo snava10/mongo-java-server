@@ -1,6 +1,6 @@
 package de.bwaldvogel.mongo.backend;
 
-import static de.bwaldvogel.mongo.backend.Constants.*;
+import static de.bwaldvogel.mongo.backend.Constants.ID_FIELD;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -15,6 +15,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import javax.management.Query;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +33,7 @@ import de.bwaldvogel.mongo.exception.MongoServerException;
 import de.bwaldvogel.mongo.exception.MongoSilentServerException;
 import de.bwaldvogel.mongo.exception.NoSuchCommandException;
 import de.bwaldvogel.mongo.wire.message.MongoDelete;
+import de.bwaldvogel.mongo.wire.message.MongoGetMore;
 import de.bwaldvogel.mongo.wire.message.MongoInsert;
 import de.bwaldvogel.mongo.wire.message.MongoQuery;
 import de.bwaldvogel.mongo.wire.message.MongoUpdate;
@@ -55,9 +58,12 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
 
     private MongoCollection<P> namespaces;
 
+    private Map<Long, Cursor> cursors;
+
     protected AbstractMongoDatabase(String databaseName, MongoBackend backend) {
         this.databaseName = databaseName;
         this.backend = backend;
+        cursors = new ConcurrentHashMap<>();
     }
 
     protected void initializeNamespacesAndIndexes() {
@@ -253,8 +259,6 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
                 insertDocuments(channel, collectionName, Collections.singletonList(document));
                 n++;
                 log.debug("Document with id: {} has been inserted, we should write now to the oplog.", document.get("_id"));
-                // Todo: Write to the oppLog collection
-                insertDocuments(channel, "oplog", Collections.singletonList(document));
             } catch (MongoServerError e) {
                 Document error = new Document();
                 error.put("index", Integer.valueOf(n));
@@ -458,19 +462,19 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
         if (objects > 0) {
             averageObjectSize = dataSize / ((double) objects);
         }
-        response.put("objects", Integer.valueOf(objects));
-        response.put("avgObjSize", Double.valueOf(averageObjectSize));
+        response.put("objects", objects);
+        response.put("avgObjSize", averageObjectSize);
         if (dataSize == 0.0) {
-            response.put("dataSize", Integer.valueOf(0));
+            response.put("dataSize", 0);
         } else {
-            response.put("dataSize", Double.valueOf(dataSize));
+            response.put("dataSize", dataSize);
         }
-        response.put("storageSize", Long.valueOf(storageSize));
-        response.put("numExtents", Integer.valueOf(0));
-        response.put("indexes", Integer.valueOf(countIndexes()));
-        response.put("indexSize", Long.valueOf(indexSize));
-        response.put("fileSize", Long.valueOf(fileSize));
-        response.put("nsSizeMB", Integer.valueOf(0));
+        response.put("storageSize", storageSize);
+        response.put("numExtents", 0);
+        response.put("indexes", countIndexes());
+        response.put("indexSize", indexSize);
+        response.put("fileSize", fileSize);
+        response.put("nsSizeMB", 0);
         Utils.markOkay(response);
         return response;
     }
@@ -587,17 +591,26 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
     }
 
     @Override
-    public Iterable<Document> handleQuery(MongoQuery query) {
+    public QueryResult<Document> handleQuery(MongoQuery query) {
         clearLastStatus(query.getChannel());
         String collectionName = query.getCollectionName();
         MongoCollection<P> collection = resolveCollection(collectionName, false);
         if (collection == null) {
-            return Collections.emptyList();
+            return new QueryResult<>();
         }
         int numSkip = query.getNumberToSkip();
         int numReturn = query.getNumberToReturn();
         Document fieldSelector = query.getReturnFieldSelector();
         return collection.handleQuery(query.getQuery(), numSkip, numReturn, fieldSelector);
+    }
+
+    @Override
+    public QueryResult<Document> handleGetMore(MongoGetMore getMore) {
+        clearLastStatus(getMore.getChannel());
+        String collectionName = getMore.getCollectionName();
+        MongoCollection<P> collection = resolveCollection(collectionName, false);
+        return collection.handleGetMore(getMore.getCursorId(), getMore.getNumberToReturn());
+//        return new QueryResult<>(Collections.emptyList(), 0, 0);
     }
 
     @Override

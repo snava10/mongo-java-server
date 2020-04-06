@@ -13,6 +13,7 @@ import de.bwaldvogel.mongo.wire.bson.BsonDecoder;
 import de.bwaldvogel.mongo.wire.message.ClientRequest;
 import de.bwaldvogel.mongo.wire.message.MessageHeader;
 import de.bwaldvogel.mongo.wire.message.MongoDelete;
+import de.bwaldvogel.mongo.wire.message.MongoGetMore;
 import de.bwaldvogel.mongo.wire.message.MongoInsert;
 import de.bwaldvogel.mongo.wire.message.MongoQuery;
 import de.bwaldvogel.mongo.wire.message.MongoUpdate;
@@ -69,9 +70,9 @@ public class MongoWireProtocolHandler extends LengthFieldBasedFrameDecoder {
 
         final int requestID = in.readIntLE();
         final int responseTo = in.readIntLE();
-        final MessageHeader header = new MessageHeader(requestID, responseTo);
-
         int opCodeId = in.readIntLE();
+        final MessageHeader header = new MessageHeader(requestID, responseTo, opCodeId);
+
         final OpCode opCode = OpCode.getById(opCodeId);
         if (opCode == null) {
             throw new IOException("opCode " + opCodeId + " not supported");
@@ -93,12 +94,15 @@ public class MongoWireProtocolHandler extends LengthFieldBasedFrameDecoder {
             case OP_UPDATE:
                 request = handleUpdate(channel, header, in);
                 break;
+            case OP_GET_MORE:
+                request = handleGetMore(channel, header, in);
+                break;
             default:
                 throw new UnsupportedOperationException("unsupported opcode: " + opCode);
         }
 
         if (in.isReadable()) {
-            throw new IOException();
+            //throw new IOException();
         }
 
         log.debug("{}", request);
@@ -193,6 +197,14 @@ public class MongoWireProtocolHandler extends LengthFieldBasedFrameDecoder {
         log.debug("query {} from {}", query, fullCollectionName);
 
         return mongoQuery;
+    }
+
+    private ClientRequest handleGetMore(Channel channel, MessageHeader header, ByteBuf buffer) {
+        buffer.skipBytes(4);
+        final String fullCollectionName = BsonDecoder.decodeCString(buffer);
+        int numberToReturn = buffer.readIntLE();
+        long cursorId = buffer.readLongLE();
+        return new MongoGetMore(channel, header, fullCollectionName, numberToReturn, cursorId);
     }
 
 }

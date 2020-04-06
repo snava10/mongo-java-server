@@ -44,8 +44,8 @@ public class AbstractMongoCollectionTest {
         }
 
         @Override
-        protected Iterable<Document> matchDocuments(Document query, Document orderBy, int numberToSkip,
-                                                    int numberToReturn) {
+        protected QueryResult<Document> matchDocuments(Document query, Document orderBy, int numberToSkip,
+                                                    int numberToReturn, boolean createCursor) {
             throw new UnsupportedOperationException();
         }
 

@@ -4,10 +4,12 @@ public class MessageHeader {
 
     private final int requestID;
     private final int responseTo;
+    private int opCode;
 
-    public MessageHeader(int requestID, int responseTo) {
+    public MessageHeader(int requestID, int responseTo, int opCode) {
         this.requestID = requestID;
         this.responseTo = responseTo;
+        this.opCode = opCode;
     }
 
     public int getRequestID() {
@@ -17,6 +19,8 @@ public class MessageHeader {
     public int getResponseTo() {
         return responseTo;
     }
+
+    public int opCode() { return opCode; }
 
     @Override
     public String toString() {
@@ -28,5 +32,4 @@ public class MessageHeader {
         sb.append(")");
         return sb.toString();
     }
-
 }

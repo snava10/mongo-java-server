@@ -83,6 +83,7 @@ import com.mongodb.WriteConcern;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.bulk.BulkWriteUpsert;
 import com.mongodb.client.ChangeStreamIterable;
+import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -168,6 +169,39 @@ public abstract class AbstractBackendTest extends AbstractTest {
             assertThat(doc).isNotNull();
             assertThat(doc).isEqualTo(d);
         }
+    }
+
+    @Test
+    public void testInsertChangeStreams() throws InterruptedException {
+//        MongoChangeStreamCursor<ChangeStreamDocument<Document>> cursor = collection.watch().cursor();
+//        Thread t = new Thread(() -> {
+//            while(true) {
+//                if (cursor.hasNext()) {
+//                    Document doc = cursor.next().getFullDocument();
+//                    assertThat(doc).isNotNull();
+//                }
+//                try {
+//                    Thread.sleep(500);
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//        });
+//        t.start();
+
+        for (int i = 0; i < 20; i++) {
+            collection.insertOne(new Document("name", "testUser1"));
+        }
+        MongoCursor<Document> cursor = collection.find().batchSize(10).cursor();
+//        MongoChangeStreamCursor<ChangeStreamDocument<Document>> cursor = collection.watch().cursor();
+//        Thread.sleep(500);
+//        assertThat(cursor.hasNext()).isTrue();
+        int count = 0;
+        while (cursor.hasNext()) {
+            Document doc = cursor.next();
+            count++;
+        }
+        assertThat(count).isEqualTo(20);
     }
 
     @Test

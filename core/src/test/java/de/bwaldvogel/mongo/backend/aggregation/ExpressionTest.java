@@ -20,10 +20,11 @@ import de.bwaldvogel.mongo.bson.Document;
 import de.bwaldvogel.mongo.exception.FailedToOptimizePipelineError;
 import de.bwaldvogel.mongo.exception.MongoServerError;
 
+@SuppressWarnings("RedundantThrows")
 public class ExpressionTest {
 
     @Test
-    void testEvaluateSimpleValue() throws Exception {
+    void testEvaluateSimpleValue() {
         assertThat(Expression.evaluate(1, json(""))).isEqualTo(1);
         assertThat(Expression.evaluate(null, json(""))).isNull();
         assertThat(Expression.evaluate("abc", json(""))).isEqualTo("abc");
@@ -34,7 +35,7 @@ public class ExpressionTest {
     }
 
     @Test
-    void testEvaluateAbs() throws Exception {
+    void testEvaluateAbs() {
         assertThat(Expression.evaluate(json("$abs: '$a'"), json("a: -2"))).isEqualTo(2);
         assertThat(Expression.evaluate(json("$abs: '$a'"), json("a: -2.5"))).isEqualTo(2.5);
         assertThat(Expression.evaluate(json("$abs: ['$a']"), json("a: -2.5"))).isEqualTo(2.5);
@@ -52,7 +53,7 @@ public class ExpressionTest {
     }
 
     @Test
-    void testEvaluateAdd() throws Exception {
+    void testEvaluateAdd() {
         assertThat(Expression.evaluate(json("$add: ['$a', '$b']"), json("a: 7, b: 5"))).isEqualTo(12);
         assertThat(Expression.evaluate(json("$add: ['$doesNotExist', 5]"), json(""))).isNull();
         assertThat(Expression.evaluate(json("$add: [7.5, 3]"), json(""))).isEqualTo(10.5);
@@ -70,7 +71,7 @@ public class ExpressionTest {
     }
 
     @Test
-    void testEvaluateAnd() throws Exception {
+    void testEvaluateAnd() {
         assertThat(Expression.evaluate(json("$and: [1, 'green']"), json(""))).isEqualTo(true);
         assertThat(Expression.evaluate(json("$and: []"), json(""))).isEqualTo(true);
         assertThat(Expression.evaluate(json("$and: [[null], [false], [0]]"), json(""))).isEqualTo(true);
@@ -87,7 +88,7 @@ public class ExpressionTest {
     }
 
     @Test
-    void testEvaluateAnyElementTrue() throws Exception {
+    void testEvaluateAnyElementTrue() {
         assertThat(Expression.evaluate(json("$anyElementTrue: [[true, false]]"), json(""))).isEqualTo(true);
         assertThat(Expression.evaluate(json("$anyElementTrue: ['$items']"), json("items: [false, true]"))).isEqualTo(true);
         assertThat(Expression.evaluate(json("$anyElementTrue: [[[false]]]"), json(""))).isEqualTo(true);
@@ -562,7 +563,7 @@ public class ExpressionTest {
     }
 
     @Test
-    void testEvaluateNe() throws Exception {
+    void testEvaluateNe() {
         assertThat(Expression.evaluate(json("$ne: [20, 20]"), json(""))).isEqualTo(false);
         assertThat(Expression.evaluate(json("$ne: [20, 10]"), json(""))).isEqualTo(true);
         assertThat(Expression.evaluate(json("$ne: [20, 'a']"), json(""))).isEqualTo(true);

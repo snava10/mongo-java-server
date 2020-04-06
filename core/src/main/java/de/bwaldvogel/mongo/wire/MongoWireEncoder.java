@@ -26,7 +26,7 @@ public class MongoWireEncoder extends MessageToByteEncoder<MongoReply> {
         buf.writeIntLE(OpCode.OP_REPLY.getId());
 
         buf.writeIntLE(reply.getFlags());
-        buf.writeLongLE(reply.getCursorId());
+        buf.writeLongLE(reply.getCursorID());
         buf.writeIntLE(reply.getStartingFrom());
         final List<Document> documents = reply.getDocuments();
         buf.writeIntLE(documents.size());

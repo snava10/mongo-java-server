@@ -32,6 +32,7 @@ import de.bwaldvogel.mongo.wire.BsonConstants;
 import de.bwaldvogel.mongo.wire.MongoWireProtocolHandler;
 import de.bwaldvogel.mongo.wire.message.Message;
 import de.bwaldvogel.mongo.wire.message.MongoDelete;
+import de.bwaldvogel.mongo.wire.message.MongoGetMore;
 import de.bwaldvogel.mongo.wire.message.MongoInsert;
 import de.bwaldvogel.mongo.wire.message.MongoQuery;
 import de.bwaldvogel.mongo.wire.message.MongoUpdate;
@@ -266,7 +267,7 @@ public abstract class AbstractMongoBackend implements MongoBackend {
          if (command.equals("insert")) {
             List<Document> documents = (List<Document>) query.get("documents");
             List<Document> oplogDocuments = documents.stream().map(d -> OplogDocument.builder()
-                .operationType(OperationType.d)
+                .operationType(OperationType.i)
                 .document(d)
                 .namespace(String.format("%s.%s", databaseName, query.get("insert")))
                 .build().toDocument()).collect(Collectors.toList());
@@ -284,9 +285,16 @@ public abstract class AbstractMongoBackend implements MongoBackend {
     }
 
     @Override
-    public Iterable<Document> handleQuery(MongoQuery query) {
+    public QueryResult<Document> handleQuery(MongoQuery query) {
         MongoDatabase db = resolveDatabase(query);
         return db.handleQuery(query);
+    }
+
+
+    @Override
+    public QueryResult<Document> handleGetMore(MongoGetMore getMore) {
+        MongoDatabase db = resolveDatabase(getMore);
+        return db.handleGetMore(getMore);
     }
 
     @Override

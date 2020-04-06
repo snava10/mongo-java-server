@@ -488,7 +488,7 @@ public class Utils {
 
     static Document cursorResponse(String ns, List<Document> firstBatch) {
         Document cursor = new Document();
-        cursor.put("id", Long.valueOf(0));
+        cursor.put("id", Long.valueOf(1234));
         cursor.put("ns", ns);
         cursor.put("firstBatch", firstBatch);
 
