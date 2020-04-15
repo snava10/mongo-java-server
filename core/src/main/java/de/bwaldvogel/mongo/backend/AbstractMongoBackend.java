@@ -3,6 +3,8 @@ package de.bwaldvogel.mongo.backend;
 import java.net.InetSocketAddress;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -11,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,12 +21,15 @@ import org.slf4j.LoggerFactory;
 import de.bwaldvogel.mongo.MongoBackend;
 import de.bwaldvogel.mongo.MongoCollection;
 import de.bwaldvogel.mongo.MongoDatabase;
+import de.bwaldvogel.mongo.bson.BsonTimestamp;
 import de.bwaldvogel.mongo.bson.Document;
 import de.bwaldvogel.mongo.exception.MongoServerError;
 import de.bwaldvogel.mongo.exception.MongoServerException;
 import de.bwaldvogel.mongo.exception.MongoSilentServerException;
 import de.bwaldvogel.mongo.exception.NoReplicationEnabledException;
 import de.bwaldvogel.mongo.exception.NoSuchCommandException;
+import de.bwaldvogel.mongo.oplog.OperationType;
+import de.bwaldvogel.mongo.oplog.OplogDocument;
 import de.bwaldvogel.mongo.wire.BsonConstants;
 import de.bwaldvogel.mongo.wire.MongoWireProtocolHandler;
 import de.bwaldvogel.mongo.wire.message.Message;
@@ -246,7 +252,27 @@ public abstract class AbstractMongoBackend implements MongoBackend {
             return handleAdminCommand(command, query);
         } else {
             MongoDatabase db = resolveDatabase(databaseName);
-            return db.handleCommand(channel, command, query);
+            Document doc = db.handleCommand(channel, command, query);
+            writeToOpLog(channel, command, query, databaseName);
+            return doc;
+        }
+    }
+
+    private void writeToOpLog(Channel channel, String command, Document query, String databaseName) {
+        if (command.equals("insert")) {
+            LocalDateTime now = LocalDateTime.now(clock);
+            List<Document> documents = (List<Document>) query.get("documents");
+            List<Document> oplogDocuments = documents.stream().map(d -> OplogDocument.builder()
+                .timestamp(new BsonTimestamp(now.toEpochSecond(ZoneOffset.UTC)))
+                .wall(now.toInstant(ZoneOffset.UTC))
+                .operationType(OperationType.i)
+                .document(d)
+                .namespace(String.format("%s.%s", databaseName, query.get("insert")))
+                .build().toDocument()).collect(Collectors.toList());
+            MongoInsert mongoInsert = new MongoInsert(channel, null, "local.oplog.rs",
+                oplogDocuments
+            );
+            handleInsert(mongoInsert);
         }
     }
 
