@@ -262,13 +262,14 @@ public abstract class AbstractMongoBackend implements MongoBackend {
         if (command.equals("insert")) {
             LocalDateTime now = LocalDateTime.now(clock);
             List<Document> documents = (List<Document>) query.get("documents");
-            List<Document> oplogDocuments = documents.stream().map(d -> OplogDocument.builder()
-                .timestamp(new BsonTimestamp(now.toEpochSecond(ZoneOffset.UTC)))
-                .wall(now.toInstant(ZoneOffset.UTC))
-                .operationType(OperationType.i)
-                .document(d)
-                .namespace(String.format("%s.%s", databaseName, query.get("insert")))
-                .build().toDocument()).collect(Collectors.toList());
+            List<Document> oplogDocuments = documents.stream().map(d ->
+                new OplogDocument()
+                .withTimestamp(new BsonTimestamp(now.toEpochSecond(ZoneOffset.UTC)))
+                .withWall(now.toInstant(ZoneOffset.UTC))
+                .withOperationType(OperationType.i)
+                .withOperationDocument(d)
+                .withNamespace(String.format("%s.%s", databaseName, query.get("insert")))
+                .toDocument()).collect(Collectors.toList());
             MongoInsert mongoInsert = new MongoInsert(channel, null, "local.oplog.rs",
                 oplogDocuments
             );

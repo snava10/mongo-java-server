@@ -254,9 +254,8 @@ public abstract class AbstractBackendTest extends AbstractTest {
         assertThat(oplogDoc).isNotNull();
         assertThat(oplogDoc.get("ts")).isNotNull();
         assertThat(oplogDoc.get("wall")).isNotNull();
-        assertThat(oplogDoc.get("ui")).isNotNull();
         assertThat(oplogDoc.get("o2")).isNull();
-        assertThat(oplogDoc.get("v")).isEqualTo(1L);
+        assertThat(oplogDoc.get("v")).isEqualTo(2L);
         assertThat(oplogDoc.get("ns")).isEqualTo(collection.getNamespace().getFullName());
         assertThat(oplogDoc.get("op")).isEqualTo(OperationType.i.toString());
         assertThat(oplogDoc.get("o")).isEqualTo(doc);

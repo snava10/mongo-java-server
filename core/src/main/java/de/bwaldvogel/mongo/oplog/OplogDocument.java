@@ -2,153 +2,111 @@ package de.bwaldvogel.mongo.oplog;
 
 import java.time.Instant;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 import de.bwaldvogel.mongo.bson.Bson;
 import de.bwaldvogel.mongo.bson.BsonTimestamp;
 import de.bwaldvogel.mongo.bson.Document;
-import jdk.nashorn.internal.objects.annotations.Getter;
 
 public class OplogDocument implements Bson {
-    private BsonTimestamp ts;
-    private long t;
-    private long h;
-    private long v = 1L;
-    private OperationType op;
-    private String ns;
-    private UUID ui = UUID.randomUUID();
-    private Instant wall;
-    private Document o;
-    private Document o2;
+    private Document document;
+
+    public OplogDocument() {
+        document = new Document();
+        withProtocolVersion(2L);
+    }
 
     public Document toDocument() {
-        Document doc = new Document();
-        Stream.of(this.getClass().getMethods()).filter(m -> m.isAnnotationPresent(Getter.class)).forEach(
-            m -> {
-                try {
-                    if (m.getReturnType().equals(OperationType.class)) {
-                        doc.put(m.getName().substring(3).toLowerCase(), m.invoke(this).toString());
-                    } else {
-                        doc.put(m.getName().substring(3).toLowerCase(), m.invoke(this));
-                    }
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        );
-        return doc;
+        return document;
     }
 
-    public Document toChangeStreamDocument() {
-        Document doc = new Document();
-        Stream.of(this.getClass().getMethods()).filter(m -> m.isAnnotationPresent(Getter.class)).forEach(
-            m -> {
-                try {
-                    if (m.getReturnType().equals(OperationType.class)) {
-                        doc.put(m.getAnnotation(Getter.class).name(), m.invoke(this).toString());
-                    } else {
-                        doc.put(m.getAnnotation(Getter.class).name(), m.invoke(this));
-                    }
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        );
-        return doc;
+    public BsonTimestamp getTimestamp() {
+        return (BsonTimestamp) document.get("ts");
     }
 
-    public static OplogDocumentBuilder builder() {
-        return new OplogDocumentBuilder();
+    public OplogDocument withTimestamp(BsonTimestamp timestamp) {
+        document.put("ts", timestamp);
+        return this;
     }
 
-    @Getter
-    public BsonTimestamp getTs() {
-        return ts;
-    }
-
-    public void setTs(BsonTimestamp ts) {
-        this.ts = ts;
-    }
-
-    @Getter
     public long getT() {
-        return t;
+        return (Long) document.get("t");
     }
 
-    public void setT(long t) {
-        this.t = t;
+    public OplogDocument withT(long t) {
+        document.put("t", t);
+        return this;
     }
 
-    @Getter
-    public long getH() {
-        return h;
+    public long getHash() {
+        return (Long) document.get("h");
     }
 
-    public void setH(long h) {
-        this.h = h;
+    public OplogDocument withHash(long h) {
+        document.put("h", h);
+        return this;
     }
 
-    @Getter
-    public long getV() {
-        return v;
+    public long getProtocolVersion() {
+        return (Long) document.get("v");
     }
 
-    public void setV(long v) {
-        this.v = v;
+    public OplogDocument withProtocolVersion(long protocolVersion) {
+        document.put("v", protocolVersion);
+        return this;
     }
 
-    @Getter
-    public OperationType getOp() {
-        return op;
+    public OperationType getOperationType() {
+        return OperationType.valueOf((String) document.get("op"));
     }
 
-    public void setOp(OperationType op) {
-        this.op = op;
+    public OplogDocument withOperationType(OperationType operationType) {
+        document.put("op", operationType.toString());
+        return this;
     }
 
-    @Getter(name="namespaceDocument")
-    public String getNs() {
-        return ns;
+    public String getNamespace() {
+        return (String) document.get("ns");
     }
 
-    public void setNs(String ns) {
-        this.ns = ns;
+    public OplogDocument withNamespace(String namespace) {
+        document.put("ns", namespace);
+        return this;
     }
 
-    @Getter
-    public UUID getUi() {
-        return ui;
+    public UUID getUUID() {
+        return (UUID) document.get("ui");
     }
 
-    public void setUi(UUID ui) {
-        this.ui = ui;
+    public OplogDocument withUUID(UUID uuid) {
+        document.put("ui", uuid);
+        return this;
     }
 
-    @Getter
     public Instant getWall() {
-        return wall;
+        return (Instant) document.get("wall");
     }
 
-    public void setWall(Instant wall) {
-        this.wall = wall;
+    public OplogDocument withWall(Instant wall) {
+        document.put("wall", wall);
+        return this;
     }
 
-    @Getter(name="fullDocument")
-    public Document getO() {
-        return o;
+    public Document getOperationDocument() {
+        return (Document) document.get("o");
     }
 
-    public void setO(Document o) {
-        this.o = o;
+    public OplogDocument withOperationDocument(Document operationDocument) {
+        document.put("o", operationDocument);
+        return this;
     }
 
-    @Getter
-    public Document getO2() {
-        return o2;
+    public Document getAdditionalOperationDocument() {
+        return (Document) document.get("o2");
     }
 
-    public void setO2(Document o2) {
-        this.o2 = o2;
+    public OplogDocument withAdditionalOperationalDocument(Document operationalDocument) {
+        document.put("o2", operationalDocument);
+        return this;
     }
 
     @Override
