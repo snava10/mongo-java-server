@@ -1,6 +1,6 @@
 package de.bwaldvogel.mongo.backend;
 
-import static de.bwaldvogel.mongo.backend.Constants.*;
+import static de.bwaldvogel.mongo.backend.Constants.ID_FIELD;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -24,7 +24,6 @@ import de.bwaldvogel.mongo.MongoCollection;
 import de.bwaldvogel.mongo.MongoDatabase;
 import de.bwaldvogel.mongo.backend.aggregation.Aggregation;
 import de.bwaldvogel.mongo.bson.Document;
-import de.bwaldvogel.mongo.exception.FailedToParseException;
 import de.bwaldvogel.mongo.exception.IndexNotFoundException;
 import de.bwaldvogel.mongo.exception.MongoServerError;
 import de.bwaldvogel.mongo.exception.MongoServerException;
@@ -185,15 +184,20 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
             collectionDescription.put("options", collectionOptions);
             collectionDescription.put("info", new Document("readOnly", false));
             collectionDescription.put("type", "collection");
-            collectionDescription.put("idIndex", new Document("key", new Document(ID_FIELD, 1))
-                .append("name", "_id_")
-                .append("ns", namespace)
-                .append("v", 2)
+            collectionDescription.put("idIndex", getPrimaryKeyIndexDescription(namespace)
             );
             firstBatch.add(collectionDescription);
         }
 
         return Utils.cursorResponse(getDatabaseName() + ".$cmd.listCollections", firstBatch);
+    }
+
+    @VisibleForExternalBackends
+    protected static Document getPrimaryKeyIndexDescription(String namespace) {
+        return new Document("key", new Document(ID_FIELD, 1))
+            .append("name", "_id_")
+            .append("ns", namespace)
+            .append("v", 2);
     }
 
     private Iterable<String> listCollectionNamespaces() {
@@ -209,7 +213,7 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
         return Utils.cursorResponse(getDatabaseName() + ".$cmd.listIndexes", indexes);
     }
 
-    private synchronized MongoCollection<P> resolveOrCreateCollection(final String collectionName) {
+    private synchronized MongoCollection<P> resolveOrCreateCollection(String collectionName) {
         final MongoCollection<P> collection = resolveCollection(collectionName, false);
         if (collection != null) {
             return collection;
@@ -358,17 +362,22 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
             throw new MongoServerException("Disabling autoIndexId is not yet implemented");
         }
 
+        createCollectionOrThrowIfExists(collectionName);
+
+        Document response = new Document();
+        Utils.markOkay(response);
+        return response;
+    }
+
+    @Override
+    public MongoCollection<P> createCollectionOrThrowIfExists(String collectionName) {
         MongoCollection<P> collection = resolveCollection(collectionName, false);
         if (collection != null) {
             throw new MongoServerError(48, "NamespaceExists",
                 "a collection '" + getDatabaseName() + "." + collectionName + "' already exists");
         }
 
-        createCollection(collectionName);
-
-        Document response = new Document();
-        Utils.markOkay(response);
-        return response;
+        return createCollection(collectionName);
     }
 
     private Document commandCreateIndexes(Document query) {
@@ -565,17 +574,10 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
 
     private Document commandAggregate(String command, Document query) {
         String collectionName = query.get(command).toString();
-        Document cursor = (Document) query.get("cursor");
-        if (cursor == null) {
-            throw new FailedToParseException("The 'cursor' option is required, except for aggregate with the explain argument");
-        }
-        if (!cursor.isEmpty()) {
-            log.warn("Non-empty cursor is not yet implemented. Ignoring.");
-        }
-
         MongoCollection<P> collection = resolveCollection(collectionName, false);
         Object pipeline = query.get("pipeline");
         Aggregation aggregation = Aggregation.fromPipeline(pipeline, this, collection);
+        aggregation.validate(query);
         List<Document> aggregationResult = aggregation.computeResult();
         return Utils.cursorResponse(getDatabaseName() + "." + collectionName, aggregationResult);
     }
@@ -609,7 +611,7 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
 
     @Override
     public void handleKillCursors(MongoKillCursors killCursors) {
-        collections.values().forEach(c -> c.handleKillCursors(killCursors));
+        collections.values().forEach(collection -> collection.handleKillCursors(killCursors));
     }
 
     @Override
@@ -867,8 +869,7 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
         results.set(results.size() - 1, result);
     }
 
-    @VisibleForExternalBackends
-    protected MongoCollection<P> createCollection(String collectionName) {
+    private MongoCollection<P> createCollection(String collectionName) {
         checkCollectionName(collectionName);
         if (collectionName.contains("$")) {
             throw new MongoServerError(10093, "cannot insert into reserved $ collection");
@@ -877,11 +878,7 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
         MongoCollection<P> collection = openOrCreateCollection(collectionName, ID_FIELD);
         addNamespace(collection);
 
-        Document indexDescription = new Document();
-        indexDescription.put("name", "_id_");
-        indexDescription.put("ns", collection.getFullName());
-        indexDescription.put("key", new Document(ID_FIELD, 1));
-        addIndex(indexDescription);
+        addIndex(getPrimaryKeyIndexDescription(collection.getFullName()));
 
         log.info("created collection {}", collection.getFullName());
 

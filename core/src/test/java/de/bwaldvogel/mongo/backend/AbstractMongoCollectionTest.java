@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -128,11 +129,11 @@ public class AbstractMongoCollectionTest {
 
     @Test
     void testCreateCursor() {
-        Collection<Document> docs = Arrays.asList(new Document("name", "Joe"), new Document("name", "Mary"),
+        List<Document> docs = Arrays.asList(new Document("name", "Joe"), new Document("name", "Mary"),
             new Document("name", "Steve"));
         Cursor cursor = collection.createCursor(docs, 1, 1);
         assertThat(cursor.isEmpty()).isFalse();
-        assertThat(cursor.documentsCount()).isEqualTo(1);
+        assertThat(cursor.takeDocuments(10)).containsExactly(docs.get(2));
         assertThat(cursor.getCursorId()).isGreaterThan(0);
     }
 
@@ -146,6 +147,15 @@ public class AbstractMongoCollectionTest {
         assertThat(cursor.isEmpty()).isTrue();
         cursor = collection.createCursor(docs, 0, 0);
         assertThat(cursor.isEmpty()).isTrue();
+    }
+
+    @Test
+    void testGetMore_shouldDeleteCursorIfEmpty() {
+        Collection<Document> docs = Arrays.asList(new Document("name", "Joe"), new Document("name", "Mary"),
+            new Document("name", "Steve"));
+        Cursor cursor = collection.createCursor(docs, 0, 2);
+        collection.handleGetMore(cursor.getCursorId(), 1);
+        assertThat(collection.cursors.containsKey(cursor.getCursorId())).isFalse();
     }
 
 }

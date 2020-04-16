@@ -22,6 +22,7 @@ import de.bwaldvogel.mongo.bson.Document;
 import de.bwaldvogel.mongo.exception.MongoServerError;
 import de.bwaldvogel.mongo.exception.MongoServerException;
 import de.bwaldvogel.mongo.exception.MongoSilentServerException;
+import de.bwaldvogel.mongo.exception.NoReplicationEnabledException;
 import de.bwaldvogel.mongo.exception.NoSuchCommandException;
 import de.bwaldvogel.mongo.wire.BsonConstants;
 import de.bwaldvogel.mongo.wire.MongoWireProtocolHandler;
@@ -101,7 +102,7 @@ public abstract class AbstractMongoBackend implements MongoBackend {
                 throw new NoSuchCommandException(new Document(command, collectionName).toString());
             }
         } else if (command.equalsIgnoreCase("replSetGetStatus")) {
-            throw new MongoServerError(76, "NoReplicationEnabled", "not running with --replSet");
+            throw new NoReplicationEnabledException();
         } else if (command.equalsIgnoreCase("getLog")) {
             final Object argument = query.get(command);
             return getLog(argument == null ? null : argument.toString());
@@ -124,6 +125,8 @@ public abstract class AbstractMongoBackend implements MongoBackend {
             return handleHostInfo();
         } else if (command.equalsIgnoreCase("getCmdLineOpts")) {
             return handleGetCmdLineOpts();
+        } else if (command.equalsIgnoreCase("getFreeMonitoringStatus")) {
+            return handleGetFreeMonitoringStatus();
         } else {
             throw new NoSuchCommandException(command);
         }
@@ -152,6 +155,13 @@ public abstract class AbstractMongoBackend implements MongoBackend {
         Document response = new Document();
         response.append("argv", Collections.emptyList());
         response.append("parsed", new Document());
+        Utils.markOkay(response);
+        return response;
+    }
+
+    private Document handleGetFreeMonitoringStatus() {
+        Document response = new Document();
+        response.append("state", "undecided");
         Utils.markOkay(response);
         return response;
     }
@@ -259,11 +269,6 @@ public abstract class AbstractMongoBackend implements MongoBackend {
     }
 
     @Override
-    public void handleKillCursors(MongoKillCursors killCursors) {
-        databases.values().forEach(database -> database.handleKillCursors(killCursors));
-    }
-
-    @Override
     public void handleInsert(MongoInsert insert) {
         MongoDatabase db = resolveDatabase(insert);
         db.handleInsert(insert);
@@ -282,6 +287,11 @@ public abstract class AbstractMongoBackend implements MongoBackend {
     }
 
     @Override
+    public void handleKillCursors(MongoKillCursors killCursors) {
+        databases.values().forEach(database -> database.handleKillCursors(killCursors));
+    }
+
+    @Override
     public void dropDatabase(String databaseName) {
         MongoDatabase removedDatabase = databases.remove(databaseName);
         removedDatabase.drop();
@@ -292,6 +302,12 @@ public abstract class AbstractMongoBackend implements MongoBackend {
         for (MongoDatabase db : databases.values()) {
             db.handleClose(channel);
         }
+    }
+
+    @Override
+    public void close() {
+        log.info("closing {}", this);
+        databases.clear();
     }
 
     @Override
