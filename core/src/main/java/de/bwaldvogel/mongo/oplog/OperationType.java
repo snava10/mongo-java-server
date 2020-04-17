@@ -1,7 +1,11 @@
 package de.bwaldvogel.mongo.oplog;
 
 public enum OperationType {
-    d, // delete
-    u, // update
-    i  // insert
+    DELETE("d"),
+    UPDATE("u"),
+    INSERT("i");
+
+    private final String value;
+    OperationType(String value) { this.value = value; }
+    public String getValue() { return value; }
 }

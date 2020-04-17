@@ -42,7 +42,7 @@ public abstract class OplogMongoBackend extends AbstractMongoBackend implements 
             new OplogDocument()
                 .withTimestamp(new BsonTimestamp(now.toEpochSecond(ZoneOffset.UTC)))
                 .withWall(now.toInstant(ZoneOffset.UTC))
-                .withOperationType(OperationType.i)
+                .withOperationType(OperationType.INSERT)
                 .withOperationDocument(d)
                 .withNamespace(String.format("%s.%s", databaseName, query.get("insert")))
                 .toDocument()).collect(Collectors.toList());
