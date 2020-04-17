@@ -62,7 +62,7 @@ public final class OplogMongoBackend implements MongoBackend, OplogBackend {
 
     @Override
     public void handleUpdate(MongoUpdate update) {
-        handleUpdate(update);
+        delegate.handleUpdate(update);
     }
 
     @Override
