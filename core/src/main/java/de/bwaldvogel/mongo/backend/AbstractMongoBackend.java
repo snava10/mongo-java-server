@@ -254,7 +254,7 @@ public abstract class AbstractMongoBackend implements MongoBackend {
         } else {
             MongoDatabase db = resolveDatabase(databaseName);
             Document doc = db.handleCommand(channel, command, query);
-            oplog.handleCommand(databaseName, command, query);
+            oplog.handleCommand(databaseName, command, query, (List<Object>)doc.get("modifiedIds"));
             return doc;
         }
     }

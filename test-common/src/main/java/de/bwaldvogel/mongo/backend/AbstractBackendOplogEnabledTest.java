@@ -1,6 +1,7 @@
 package de.bwaldvogel.mongo.backend;
 
 import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.or;
 import static com.mongodb.client.model.Updates.set;
 import static de.bwaldvogel.mongo.backend.TestUtils.json;
 
@@ -56,9 +57,6 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         OperationType op = OperationType.fromCode(updateOplogEntry.get("op").toString());
         Document o2 = (Document) updateOplogEntry.get("o2");
         Document o = (Document) updateOplogEntry.get("o");
-//        assertThat(collection.find(json("_id: 1")).first()).isEqualTo(json("_id: 1, a: 5"));
-//
-//        collection.updateOne(json("_id: 1"), json("$set: {_id: 1, b: 3}"));
         assertThat(op).isEqualTo(OperationType.UPDATE);
         assertThat(o2.get("_id")).isEqualTo(1);
         assertThat(o.get("$set")).isEqualTo(updatedDocument);
@@ -103,11 +101,10 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
     }
 
     @Test
-    public void testOplogUpdate_updateOneManyFields() {
+    public void testOplogUpdate_updateOneManyFieldsUsingDriverHelpers() {
         collection.insertOne(json("_id: 1, b: 6"));
         Document updatedDocument = json("a: 7, b: 7");
         collection.updateOne(eq("_id", 1), Arrays.asList(set("a", 7), set("b", 7)));
-//        collection.updateOne(eq("_id", 1), json("$set: {a: 7, b: 7}"));
 
         List<Document> oplogs = new ArrayList<>();
 
@@ -137,7 +134,6 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         collection.insertOne(json("_id: 37, b: 6"));
         Document updatedDocument = json("a: 7, b: 7");
         collection.updateOne(eq("b", 6), Arrays.asList(set("a", 7), set("b", 7)));
-//        collection.updateOne(eq("_id", 1), json("$set: {a: 7, b: 7}"));
 
         List<Document> oplogs = new ArrayList<>();
 
@@ -160,6 +156,17 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
 
         Date wall = (Date)updateOplogEntry.get("wall");
         assertThat(wall).isEqualTo(Date.from(instant));
+    }
+
+    @Test
+    public void testUpdateMany() {
+        collection.insertMany(Arrays.asList(json("_id: 37, b: 6"), json("_id: 41, b: 7")));
+        Document updatedDocument = json("a: 7, b: 7");
+        collection.updateMany(or(eq("b", 6), eq("b", 7)), Arrays.asList(set("a", 7), set("b", 7)));
+        List<Document> oplogs = new ArrayList<>();
+        oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
+        assertThat(oplogs.size()).isEqualTo(4);
+
     }
 
 }

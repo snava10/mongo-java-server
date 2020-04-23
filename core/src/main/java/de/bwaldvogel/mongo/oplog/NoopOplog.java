@@ -1,6 +1,7 @@
 package de.bwaldvogel.mongo.oplog;
 
 import java.time.Clock;
+import java.util.List;
 
 import de.bwaldvogel.mongo.bson.Document;
 import io.netty.channel.Channel;
@@ -22,10 +23,11 @@ public final class NoopOplog extends AbstractOplog {
     }
 
     @Override
-    public void handleUpdate(String databaseName, Document query) {
+    public void handleUpdate(String databaseName, Document query, List<Object> updatedIds) {
     }
 
     @Override
-    public void handleDelete(String databaseName, Document query) {
+    public void handleDelete(String databaseName, Document query, List<Object> deletedIds) {
     }
+
 }

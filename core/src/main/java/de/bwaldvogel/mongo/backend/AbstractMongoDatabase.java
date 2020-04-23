@@ -296,6 +296,7 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
         List<Document> writeErrors = new ArrayList<>();
 
         Document response = new Document();
+        List<String> updatedIds = new ArrayList<>();
         for (int i = 0; i < updates.size(); i++) {
             Document updateObj = updates.get(i);
             Document selector = (Document) updateObj.get("q");
@@ -318,10 +319,12 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
             }
             nMatched += ((Integer) result.get("n")).intValue();
             nModified += ((Integer) result.get("nModified")).intValue();
+            updatedIds.addAll((List<String>)result.get("modifiedIds"));
         }
 
         response.put("n", nMatched + upserts.size());
         response.put("nModified", nModified);
+        response.put("modifiedIds", updatedIds);
         if (!upserts.isEmpty()) {
             response.put("upserted", upserts);
         }

@@ -34,23 +34,23 @@ public class CollectionBackedOplog extends AbstractOplog {
     }
 
     @Override
-    public void handleUpdate(String databaseName, Document query) {
+    public void handleUpdate(String databaseName, Document query, List<Object> updatedIds) {
         Instant instant = clock.instant();
-        List<Document> documents = (List<Document>) query.get("updates");
-        List<Document> oplogDocuments = documents.stream().map(d ->
+        Document updateDoc = ((List<Document>) query.get("updates")).get(0);
+        List<Document> oplogDocuments = updatedIds.stream().map(id ->
             new OplogDocument()
                 .withTimestamp(new BsonTimestamp(instant.toEpochMilli()))
                 .withWall(instant)
                 .withOperationType(OperationType.UPDATE)
-                .withOperationDocument(buildUpdateOperationDocument(d))
+                .withOperationDocument(buildUpdateOperationDocument(updateDoc))
                 .withNamespace(String.format("%s.%s", databaseName, query.get("update")))
-                .withAdditionalOperationalDocument(new Document("_id", ((Document)d.get("q")).get("_id")))
+                .withAdditionalOperationalDocument(new Document("_id", id))
                 .asDocument()).collect(Collectors.toList());
         collection.insertDocuments(oplogDocuments);
     }
 
     @Override
-    public void handleDelete(String databaseName, Document query) {
+    public void handleDelete(String databaseName, Document query, List<Object> deletedIds) {
     }
 
     private Document buildUpdateOperationDocument(Document document) {

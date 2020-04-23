@@ -1,6 +1,7 @@
 package de.bwaldvogel.mongo.oplog;
 
 import java.time.Clock;
+import java.util.List;
 
 import de.bwaldvogel.mongo.bson.Document;
 import io.netty.channel.Channel;
@@ -14,16 +15,16 @@ public abstract class AbstractOplog implements Oplog {
     }
 
     @Override
-    public final void handleCommand(String databaseName, String command, Document query) {
+    public final void handleCommand(String databaseName, String command, Document query, List<Object> modifiedIds) {
         switch (command) {
             case "insert":
                 handleInsert(databaseName, query);
                 break;
             case "update":
-                handleUpdate(databaseName, query);
+                handleUpdate(databaseName, query, modifiedIds);
                 break;
             case "delete":
-                handleDelete(databaseName, query);
+                handleDelete(databaseName, query, modifiedIds);
                 break;
         }
     }

@@ -531,10 +531,12 @@ public abstract class AbstractMongoCollection<P> implements MongoCollection<P> {
 
         int nMatched = 0;
         int nModified = 0;
+        List<Object> updatedIds = new ArrayList<>();
         for (Document document : queryDocuments(selector, null, 0, 0)) {
             Integer matchPos = matcher.matchPosition(document, selector);
             Document oldDocument = updateDocument(document, updateQuery, arrayFilters, matchPos);
             if (!Utils.nullAwareEquals(oldDocument, document)) {
+                updatedIds.add(document.get("_id"));
                 nModified++;
             }
             nMatched++;
@@ -554,6 +556,7 @@ public abstract class AbstractMongoCollection<P> implements MongoCollection<P> {
 
         result.put("n", Integer.valueOf(nMatched));
         result.put("nModified", Integer.valueOf(nModified));
+        result.put("modifiedIds", updatedIds);
         return result;
     }
 
