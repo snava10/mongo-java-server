@@ -1,5 +1,12 @@
 package de.bwaldvogel.mongo.oplog;
 
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.ADDITIONAL_OPERATION_DOCUMENT;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.HASH;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.NAMESPACE;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.OPERATION_DOCUMENT;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.OPERATION_TYPE;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.PROTOCOL_VERSION;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -107,6 +114,17 @@ public class OplogDocument implements Bson {
     public OplogDocument withAdditionalOperationalDocument(Document operationalDocument) {
         document.put("o2", operationalDocument);
         return this;
+    }
+
+    public static OplogDocument fromDocument(Document document) {
+        OplogDocument doc = new OplogDocument()
+            .withAdditionalOperationalDocument((Document) document.get(ADDITIONAL_OPERATION_DOCUMENT))
+            .withHash((long) document.get(HASH))
+            .withNamespace((String) document.get(NAMESPACE))
+            .withOperationDocument((Document) document.get(OPERATION_DOCUMENT))
+            .withOperationType(OperationType.fromCode((String)document.get(OPERATION_TYPE)))
+            .withProtocolVersion((long) document.get(PROTOCOL_VERSION));
+        return doc;
     }
 
     @Override

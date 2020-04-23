@@ -498,6 +498,15 @@ public class Utils {
         return response;
     }
 
+    public static Document mergeUpdateDocuments(Document updateDoc) {
+        if (updateDoc.get("u").getClass().equals(Document.class)) {
+            return (Document) updateDoc.get("u");
+        }
+        Document res = new Document();
+        ((List<Document>)updateDoc.get("u")).forEach(d -> res.putAll((Document) d.get("$set")));
+        return new Document("$set", res);
+    }
+
 
     static String joinPath(String... fragments) {
         return Stream.of(fragments)

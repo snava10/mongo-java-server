@@ -14,7 +14,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+
+import javax.print.Doc;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -296,7 +299,7 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
         for (int i = 0; i < updates.size(); i++) {
             Document updateObj = updates.get(i);
             Document selector = (Document) updateObj.get("q");
-            Document update = (Document) updateObj.get("u");
+            Document update = Utils.mergeUpdateDocuments(updateObj);
             ArrayFilters arrayFilters = ArrayFilters.parse(updateObj, update);
             boolean multi = Utils.isTrue(updateObj.get("multi"));
             boolean upsert = Utils.isTrue(updateObj.get("upsert"));

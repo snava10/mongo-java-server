@@ -1,0 +1,165 @@
+package de.bwaldvogel.mongo.backend;
+
+import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Updates.set;
+import static de.bwaldvogel.mongo.backend.TestUtils.json;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.function.Consumer;
+
+import org.bson.BsonTimestamp;
+import org.bson.Document;
+import org.junit.jupiter.api.Test;
+
+import de.bwaldvogel.mongo.MongoBackend;
+import de.bwaldvogel.mongo.MongoServer;
+import de.bwaldvogel.mongo.oplog.OperationType;
+
+public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTest {
+
+    @Override
+    protected void setUpBackend() throws Exception {
+        MongoBackend backend = createBackend();
+        backend.setClock(TEST_CLOCK);
+        mongoServer = new MongoServer(backend).withOplogEnabled();
+        serverAddress = mongoServer.bind();
+    }
+
+    @Test
+    public void testSimpleOplogInsert() {
+        Document doc = new Document("name", "testUser1");
+        collection.insertOne(doc);
+        Document oplogDoc = oplogCollection.find().first();
+        assertThat(oplogDoc).isNotNull();
+        assertThat(oplogDoc.get("ts")).isNotNull();
+        assertThat(oplogDoc.get("wall")).isNotNull();
+        assertThat(oplogDoc.get("o2")).isNull();
+        assertThat(oplogDoc.get("v")).isEqualTo(2L);
+        assertThat(oplogDoc.get("ns")).isEqualTo(collection.getNamespace().getFullName());
+        assertThat(oplogDoc.get("op")).isEqualTo(OperationType.INSERT.getCode());
+        assertThat(oplogDoc.get("o")).isEqualTo(doc);
+    }
+
+    @Test
+    public void testOplogUpdate_replaceOne() {
+        collection.insertOne(json("_id: 1, b: 6"));
+        Document updatedDocument = json("a: 5, b: 7");
+        collection.replaceOne(json("_id: 1"), updatedDocument);
+        List<Document> oplogs = new ArrayList<>();
+        oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
+        assertThat(oplogs.size()).isEqualTo(2);
+        Document updateOplogEntry = oplogs.get(1);
+        OperationType op = OperationType.fromCode(updateOplogEntry.get("op").toString());
+        Document o2 = (Document) updateOplogEntry.get("o2");
+        Document o = (Document) updateOplogEntry.get("o");
+//        assertThat(collection.find(json("_id: 1")).first()).isEqualTo(json("_id: 1, a: 5"));
+//
+//        collection.updateOne(json("_id: 1"), json("$set: {_id: 1, b: 3}"));
+        assertThat(op).isEqualTo(OperationType.UPDATE);
+        assertThat(o2.get("_id")).isEqualTo(1);
+        assertThat(o.get("$set")).isEqualTo(updatedDocument);
+
+        assertThat(updateOplogEntry.get("ns")).isEqualTo(collection.getNamespace().toString());
+        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get("ts");
+        Instant instant = TEST_CLOCK.instant();
+        BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
+        assertThat(ts).isEqualTo(expectedTs);
+
+        Date wall = (Date)updateOplogEntry.get("wall");
+        assertThat(wall).isEqualTo(Date.from(instant));
+    }
+
+    @Test
+    public void testOplogUpdate_updateOne() {
+        collection.insertOne(json("_id: 34, b: 6"));
+        Document updatedDocument = json("a: 6");
+        collection.updateOne(eq("_id", 34), set("a", 6));
+
+        List<Document> oplogs = new ArrayList<>();
+
+        oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
+        assertThat(oplogs.size()).isEqualTo(2);
+        Document updateOplogEntry = oplogs.get(1);
+        OperationType op = OperationType.fromCode(updateOplogEntry.get("op").toString());
+        Document o2 = (Document) updateOplogEntry.get("o2");
+        Document o = (Document) updateOplogEntry.get("o");
+
+        assertThat(op).isEqualTo(OperationType.UPDATE);
+        assertThat(o2.get("_id")).isEqualTo(34);
+        assertThat(o.get("$set")).isEqualTo(updatedDocument);
+
+        assertThat(updateOplogEntry.get("ns")).isEqualTo(collection.getNamespace().toString());
+        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get("ts");
+        Instant instant = TEST_CLOCK.instant();
+        BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
+        assertThat(ts).isEqualTo(expectedTs);
+
+        Date wall = (Date)updateOplogEntry.get("wall");
+        assertThat(wall).isEqualTo(Date.from(instant));
+    }
+
+    @Test
+    public void testOplogUpdate_updateOneManyFields() {
+        collection.insertOne(json("_id: 1, b: 6"));
+        Document updatedDocument = json("a: 7, b: 7");
+        collection.updateOne(eq("_id", 1), Arrays.asList(set("a", 7), set("b", 7)));
+//        collection.updateOne(eq("_id", 1), json("$set: {a: 7, b: 7}"));
+
+        List<Document> oplogs = new ArrayList<>();
+
+        oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
+        assertThat(oplogs.size()).isEqualTo(2);
+        Document updateOplogEntry = oplogs.get(1);
+        OperationType op = OperationType.fromCode(updateOplogEntry.get("op").toString());
+        Document o2 = (Document) updateOplogEntry.get("o2");
+        Document o = (Document) updateOplogEntry.get("o");
+
+        assertThat(op).isEqualTo(OperationType.UPDATE);
+        assertThat(o2.get("_id")).isEqualTo(1);
+        assertThat(o.get("$set")).isEqualTo(updatedDocument);
+
+        assertThat(updateOplogEntry.get("ns")).isEqualTo(collection.getNamespace().toString());
+        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get("ts");
+        Instant instant = TEST_CLOCK.instant();
+        BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
+        assertThat(ts).isEqualTo(expectedTs);
+
+        Date wall = (Date)updateOplogEntry.get("wall");
+        assertThat(wall).isEqualTo(Date.from(instant));
+    }
+
+    @Test
+    public void testOplogUpdate_updateOneFilteringByOtherThanId() {
+        collection.insertOne(json("_id: 37, b: 6"));
+        Document updatedDocument = json("a: 7, b: 7");
+        collection.updateOne(eq("b", 6), Arrays.asList(set("a", 7), set("b", 7)));
+//        collection.updateOne(eq("_id", 1), json("$set: {a: 7, b: 7}"));
+
+        List<Document> oplogs = new ArrayList<>();
+
+        oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
+        assertThat(oplogs.size()).isEqualTo(2);
+        Document updateOplogEntry = oplogs.get(1);
+        OperationType op = OperationType.fromCode(updateOplogEntry.get("op").toString());
+        Document o2 = (Document) updateOplogEntry.get("o2");
+        Document o = (Document) updateOplogEntry.get("o");
+
+        assertThat(op).isEqualTo(OperationType.UPDATE);
+        assertThat(o2.get("_id")).isEqualTo(37);
+        assertThat(o.get("$set")).isEqualTo(updatedDocument);
+
+        assertThat(updateOplogEntry.get("ns")).isEqualTo(collection.getNamespace().toString());
+        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get("ts");
+        Instant instant = TEST_CLOCK.instant();
+        BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
+        assertThat(ts).isEqualTo(expectedTs);
+
+        Date wall = (Date)updateOplogEntry.get("wall");
+        assertThat(wall).isEqualTo(Date.from(instant));
+    }
+
+}

@@ -24,7 +24,7 @@ public enum OperationType {
         }
     }
 
-    static OperationType fromCode(String code) {
+    public static OperationType fromCode(String code) {
         OperationType operationType = MAP.get(code);
         if (operationType == null) {
             throw new IllegalArgumentException("unknown operation type: " + code);

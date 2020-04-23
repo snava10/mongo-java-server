@@ -40,6 +40,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 import org.bson.BsonInt32;
@@ -244,21 +245,6 @@ public abstract class AbstractBackendTest extends AbstractTest {
         cursor.next();
         killCursors(Collections.singletonList(cursor.getServerCursor().getId()));
         assertThrows(MongoCursorNotFoundException.class, cursor::next);
-    }
-
-    @Test
-    public void testSimpleOplogInsert() {
-        Document doc = new Document("name", "testUser1");
-        collection.insertOne(doc);
-        Document oplogDoc = oplogCollection.find().first();
-        assertThat(oplogDoc).isNotNull();
-        assertThat(oplogDoc.get("ts")).isNotNull();
-        assertThat(oplogDoc.get("wall")).isNotNull();
-        assertThat(oplogDoc.get("o2")).isNull();
-        assertThat(oplogDoc.get("v")).isEqualTo(2L);
-        assertThat(oplogDoc.get("ns")).isEqualTo(collection.getNamespace().getFullName());
-        assertThat(oplogDoc.get("op")).isEqualTo(OperationType.INSERT.getCode());
-        assertThat(oplogDoc.get("o")).isEqualTo(doc);
     }
 
     @Test

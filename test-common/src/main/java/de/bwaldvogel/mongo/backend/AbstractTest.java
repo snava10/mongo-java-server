@@ -52,7 +52,7 @@ public abstract class AbstractTest {
 
     static com.mongodb.reactivestreams.client.MongoCollection<Document> asyncCollection;
 
-    private static MongoServer mongoServer;
+    protected static MongoServer mongoServer;
     private static MongoClient asyncClient;
     protected static InetSocketAddress serverAddress;
 
@@ -111,7 +111,7 @@ public abstract class AbstractTest {
     protected void setUpBackend() throws Exception {
         MongoBackend backend = createBackend();
         backend.setClock(TEST_CLOCK);
-        mongoServer = new MongoServer(backend).withOplogEnabled();
+        mongoServer = new MongoServer(backend);
         serverAddress = mongoServer.bind();
     }
 

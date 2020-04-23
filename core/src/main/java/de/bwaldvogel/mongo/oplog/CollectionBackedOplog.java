@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import de.bwaldvogel.mongo.MongoCollection;
+import de.bwaldvogel.mongo.backend.Utils;
 import de.bwaldvogel.mongo.bson.BsonTimestamp;
 import de.bwaldvogel.mongo.bson.Document;
 
@@ -34,10 +35,32 @@ public class CollectionBackedOplog extends AbstractOplog {
 
     @Override
     public void handleUpdate(String databaseName, Document query) {
+        Instant instant = clock.instant();
+        List<Document> documents = (List<Document>) query.get("updates");
+        List<Document> oplogDocuments = documents.stream().map(d ->
+            new OplogDocument()
+                .withTimestamp(new BsonTimestamp(instant.toEpochMilli()))
+                .withWall(instant)
+                .withOperationType(OperationType.UPDATE)
+                .withOperationDocument(buildUpdateOperationDocument(d))
+                .withNamespace(String.format("%s.%s", databaseName, query.get("update")))
+                .withAdditionalOperationalDocument(new Document("_id", ((Document)d.get("q")).get("_id")))
+                .asDocument()).collect(Collectors.toList());
+        collection.insertDocuments(oplogDocuments);
     }
 
     @Override
     public void handleDelete(String databaseName, Document query) {
+    }
 
+    private Document buildUpdateOperationDocument(Document document) {
+        Document mergedDoc = Utils.mergeUpdateDocuments(document);
+        if (mergedDoc.containsKey("$set")) {
+            // This is a result of an update one
+            return mergedDoc;
+        }
+        // This is a result of a replace one
+        mergedDoc.remove("_id");
+        return new Document("$set", mergedDoc);
     }
 }
