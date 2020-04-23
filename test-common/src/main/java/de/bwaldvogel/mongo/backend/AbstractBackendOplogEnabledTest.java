@@ -11,9 +11,11 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.bson.BsonTimestamp;
 import org.bson.Document;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import de.bwaldvogel.mongo.MongoBackend;
@@ -46,7 +48,7 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
     }
 
     @Test
-    public void testOplogUpdate_replaceOne() {
+    public void testOplogReplaceOneById() {
         collection.insertOne(json("_id: 1, b: 6"));
         Document updatedDocument = json("a: 5, b: 7");
         collection.replaceOne(json("_id: 1"), updatedDocument);
@@ -67,12 +69,12 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
         assertThat(ts).isEqualTo(expectedTs);
 
-        Date wall = (Date)updateOplogEntry.get("wall");
+        Date wall = (Date) updateOplogEntry.get("wall");
         assertThat(wall).isEqualTo(Date.from(instant));
     }
 
     @Test
-    public void testOplogUpdate_updateOne() {
+    public void testOplogUpdateOneById() {
         collection.insertOne(json("_id: 34, b: 6"));
         Document updatedDocument = json("a: 6");
         collection.updateOne(eq("_id", 34), set("a", 6));
@@ -96,12 +98,12 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
         assertThat(ts).isEqualTo(expectedTs);
 
-        Date wall = (Date)updateOplogEntry.get("wall");
+        Date wall = (Date) updateOplogEntry.get("wall");
         assertThat(wall).isEqualTo(Date.from(instant));
     }
 
     @Test
-    public void testOplogUpdate_updateOneManyFieldsUsingDriverHelpers() {
+    public void testOplogUpdateOneManyFieldsUsingDriverHelpers() {
         collection.insertOne(json("_id: 1, b: 6"));
         Document updatedDocument = json("a: 7, b: 7");
         collection.updateOne(eq("_id", 1), Arrays.asList(set("a", 7), set("b", 7)));
@@ -125,12 +127,12 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
         assertThat(ts).isEqualTo(expectedTs);
 
-        Date wall = (Date)updateOplogEntry.get("wall");
+        Date wall = (Date) updateOplogEntry.get("wall");
         assertThat(wall).isEqualTo(Date.from(instant));
     }
 
     @Test
-    public void testOplogUpdate_updateOneFilteringByOtherThanId() {
+    public void testOplogUpdateOneFilteringByOtherThanId() {
         collection.insertOne(json("_id: 37, b: 6"));
         Document updatedDocument = json("a: 7, b: 7");
         collection.updateOne(eq("b", 6), Arrays.asList(set("a", 7), set("b", 7)));
@@ -154,12 +156,12 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
         assertThat(ts).isEqualTo(expectedTs);
 
-        Date wall = (Date)updateOplogEntry.get("wall");
+        Date wall = (Date) updateOplogEntry.get("wall");
         assertThat(wall).isEqualTo(Date.from(instant));
     }
 
     @Test
-    public void testUpdateMany() {
+    public void testUpdateManyUpdatedIdsShouldBeReflectedInOplog() {
         collection.insertMany(Arrays.asList(json("_id: 37, b: 6"), json("_id: 41, b: 7")));
         Document updatedDocument = json("a: 7, b: 7");
         collection.updateMany(or(eq("b", 6), eq("b", 7)), Arrays.asList(set("a", 7), set("b", 7)));
@@ -167,6 +169,20 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
         assertThat(oplogs.size()).isEqualTo(4);
 
+        List<Object> updatedIds = oplogs.stream().skip(2).map(d -> ((Document) d.get("o2")).get("_id"))
+            .collect(Collectors.toList());
+
+        assertThat(updatedIds).containsExactly(37, 41);
+    }
+
+    @Test
+    @Disabled
+    public void testFindOneAndReplace() {
+        collection.insertMany(Arrays.asList(json("_id: 37, b: 6"), json("_id: 41, b: 7")));
+        collection.findOneAndReplace(or(eq("b", 6), eq("b", 7)), json("_id: 37, b: 123"));
+        List<Document> oplogs = new ArrayList<>();
+        oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
+        // Todo Assertions
     }
 
 }
