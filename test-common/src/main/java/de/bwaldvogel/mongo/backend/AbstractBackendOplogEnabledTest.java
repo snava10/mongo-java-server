@@ -176,6 +176,25 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
     }
 
     @Test
+    public void testMultipleUpdatesInARow() {
+        Document doc = json("_id: 34, b: 6");
+        collection.insertOne(doc);
+        collection.updateOne(eq("_id", 34), set("a", 6));
+        collection.updateOne(eq("_id", 34), set("b", 7));
+
+        List<Document> oplogs = new ArrayList<>();
+        oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
+
+        assertThat(oplogs.size()).isEqualTo(3);
+        assertThat(oplogs.get(0).get("op")).isEqualTo("i");
+        assertThat(oplogs.get(0).get("o")).isEqualTo(doc);
+        assertThat(oplogs.get(1).get("op")).isEqualTo("u");
+        assertThat(oplogs.get(1).get("o")).isEqualTo(json("$set: {a: 6}"));
+        assertThat(oplogs.get(2).get("op")).isEqualTo("u");
+        assertThat(oplogs.get(2).get("o")).isEqualTo(json("$set: {b: 7}"));
+    }
+
+    @Test
     @Disabled
     public void testFindOneAndReplace() {
         collection.insertMany(Arrays.asList(json("_id: 37, b: 6"), json("_id: 41, b: 7")));

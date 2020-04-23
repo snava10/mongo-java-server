@@ -27,7 +27,7 @@ public class CollectionBackedOplog extends AbstractOplog {
                 .withTimestamp(new BsonTimestamp(instant.toEpochMilli()))
                 .withWall(instant)
                 .withOperationType(OperationType.INSERT)
-                .withOperationDocument(d)
+                .withOperationDocument(d.clone())
                 .withNamespace(String.format("%s.%s", databaseName, query.get("insert")))
                 .asDocument()).collect(Collectors.toList());
         collection.insertDocuments(oplogDocuments);
