@@ -3,8 +3,6 @@ package de.bwaldvogel.mongo.oplog;
 import java.util.HashMap;
 import java.util.Map;
 
-import de.bwaldvogel.mongo.backend.Assert;
-
 public enum OplogDocumentFieldName {
     TIMESTAMP("ts"),
     T("t"),
@@ -14,7 +12,7 @@ public enum OplogDocumentFieldName {
     NAMESPACE("ns"),
     UUID("ui"),
     WALL("wall"),
-    OPERATION_DOCUMENT("op"),
+    OPERATION_DOCUMENT("o"),
     ADDITIONAL_OPERATION_DOCUMENT("o2");
 
     OplogDocumentFieldName(String code) { this.code = code; }
@@ -26,8 +24,7 @@ public enum OplogDocumentFieldName {
 
     static {
         for (OplogDocumentFieldName oplogDocumentFieldName : OplogDocumentFieldName.values()) {
-            OplogDocumentFieldName old = MAP.put(oplogDocumentFieldName.getCode(), oplogDocumentFieldName);
-            Assert.isNull(old, () -> "Duplicate operation type value: " + oplogDocumentFieldName.getCode());
+            MAP.put(oplogDocumentFieldName.getCode(), oplogDocumentFieldName);
         }
     }
 

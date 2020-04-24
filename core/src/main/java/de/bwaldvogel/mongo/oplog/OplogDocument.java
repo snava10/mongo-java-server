@@ -6,6 +6,9 @@ import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.NAMESPACE;
 import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.OPERATION_DOCUMENT;
 import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.OPERATION_TYPE;
 import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.PROTOCOL_VERSION;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.T;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.TIMESTAMP;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.WALL;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -22,109 +25,102 @@ public class OplogDocument implements Bson {
         withProtocolVersion(2L);
     }
 
+    public OplogDocument(Document document) {
+        this.document = document.clone();
+    }
+
     public Document asDocument() {
         return document;
     }
 
     public BsonTimestamp getTimestamp() {
-        return (BsonTimestamp) document.get("ts");
+        return (BsonTimestamp) document.get(TIMESTAMP.getCode());
     }
 
     public OplogDocument withTimestamp(BsonTimestamp timestamp) {
-        document.put("ts", timestamp);
+        document.put(TIMESTAMP.getCode(), timestamp);
         return this;
     }
 
     public long getT() {
-        return (Long) document.get("t");
+        return (Long) document.get(T.getCode());
     }
 
     public OplogDocument withT(long t) {
-        document.put("t", t);
+        document.put(T.getCode(), t);
         return this;
     }
 
     public long getHash() {
-        return (Long) document.get("h");
+        return (Long) document.get(HASH.getCode());
     }
 
     public OplogDocument withHash(long h) {
-        document.put("h", h);
+        document.put(HASH.getCode(), h);
         return this;
     }
 
     public long getProtocolVersion() {
-        return (Long) document.get("v");
+        return (Long) document.get(PROTOCOL_VERSION.getCode());
     }
 
     public OplogDocument withProtocolVersion(long protocolVersion) {
-        document.put("v", protocolVersion);
+        document.put(PROTOCOL_VERSION.getCode(), protocolVersion);
         return this;
     }
 
     public OperationType getOperationType() {
-        return OperationType.valueOf((String) document.get("op"));
+        return OperationType.valueOf((String) document.get(OPERATION_TYPE.getCode()));
     }
 
     public OplogDocument withOperationType(OperationType operationType) {
-        document.put("op", operationType.getCode());
+        document.put(OPERATION_TYPE.getCode(), operationType.getCode());
         return this;
     }
 
     public String getNamespace() {
-        return (String) document.get("ns");
+        return (String) document.get(NAMESPACE.getCode());
     }
 
     public OplogDocument withNamespace(String namespace) {
-        document.put("ns", namespace);
+        document.put(NAMESPACE.getCode(), namespace);
         return this;
     }
 
     public UUID getUUID() {
-        return (UUID) document.get("ui");
+        return (UUID) document.get(OplogDocumentFieldName.UUID.getCode());
     }
 
     public OplogDocument withUUID(UUID uuid) {
-        document.put("ui", uuid);
+        document.put(OplogDocumentFieldName.UUID.getCode(), uuid);
         return this;
     }
 
     public Instant getWall() {
-        return (Instant) document.get("wall");
+        return (Instant) document.get(WALL.getCode());
     }
 
     public OplogDocument withWall(Instant wall) {
-        document.put("wall", wall);
+        document.put(WALL.getCode(), wall);
         return this;
     }
 
     public Document getOperationDocument() {
-        return (Document) document.get("o");
+        return (Document) document.get(OPERATION_DOCUMENT.getCode());
     }
 
     public OplogDocument withOperationDocument(Document operationDocument) {
-        document.put("o", operationDocument);
+        document.put(OPERATION_DOCUMENT.getCode(), operationDocument);
         return this;
     }
 
     public Document getAdditionalOperationDocument() {
-        return (Document) document.get("o2");
+        return (Document) document.get(ADDITIONAL_OPERATION_DOCUMENT.getCode());
     }
 
     public OplogDocument withAdditionalOperationalDocument(Document operationalDocument) {
-        document.put("o2", operationalDocument);
+        document.put(ADDITIONAL_OPERATION_DOCUMENT.getCode(), operationalDocument);
         return this;
-    }
-
-    public static OplogDocument fromDocument(Document document) {
-        OplogDocument doc = new OplogDocument()
-            .withAdditionalOperationalDocument((Document) document.get(ADDITIONAL_OPERATION_DOCUMENT))
-            .withHash((long) document.get(HASH))
-            .withNamespace((String) document.get(NAMESPACE))
-            .withOperationDocument((Document) document.get(OPERATION_DOCUMENT))
-            .withOperationType(OperationType.fromCode((String)document.get(OPERATION_TYPE)))
-            .withProtocolVersion((long) document.get(PROTOCOL_VERSION));
-        return doc;
     }
 
     @Override
@@ -138,7 +134,8 @@ public class OplogDocument implements Bson {
         if (!(o instanceof OplogDocument)) {
             return false;
         }
-        return asDocument().equals(((OplogDocument)o).asDocument());
+        OplogDocument other = (OplogDocument)o;
+        return asDocument().equals(other.asDocument());
     }
 
     @Override

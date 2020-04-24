@@ -4,6 +4,13 @@ import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.or;
 import static com.mongodb.client.model.Updates.set;
 import static de.bwaldvogel.mongo.backend.TestUtils.json;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.ADDITIONAL_OPERATION_DOCUMENT;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.NAMESPACE;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.OPERATION_DOCUMENT;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.OPERATION_TYPE;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.PROTOCOL_VERSION;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.TIMESTAMP;
+import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.WALL;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -38,13 +45,13 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         collection.insertOne(doc);
         Document oplogDoc = oplogCollection.find().first();
         assertThat(oplogDoc).isNotNull();
-        assertThat(oplogDoc.get("ts")).isNotNull();
-        assertThat(oplogDoc.get("wall")).isNotNull();
-        assertThat(oplogDoc.get("o2")).isNull();
-        assertThat(oplogDoc.get("v")).isEqualTo(2L);
-        assertThat(oplogDoc.get("ns")).isEqualTo(collection.getNamespace().getFullName());
-        assertThat(oplogDoc.get("op")).isEqualTo(OperationType.INSERT.getCode());
-        assertThat(oplogDoc.get("o")).isEqualTo(doc);
+        assertThat(oplogDoc.get(TIMESTAMP.getCode())).isNotNull();
+        assertThat(oplogDoc.get(WALL.getCode())).isNotNull();
+        assertThat(oplogDoc.get(ADDITIONAL_OPERATION_DOCUMENT.getCode())).isNull();
+        assertThat(oplogDoc.get(PROTOCOL_VERSION.getCode())).isEqualTo(2L);
+        assertThat(oplogDoc.get(NAMESPACE.getCode())).isEqualTo(collection.getNamespace().getFullName());
+        assertThat(oplogDoc.get(OPERATION_TYPE.getCode())).isEqualTo(OperationType.INSERT.getCode());
+        assertThat(oplogDoc.get(OPERATION_DOCUMENT.getCode())).isEqualTo(doc);
     }
 
     @Test
@@ -56,20 +63,20 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
         assertThat(oplogs.size()).isEqualTo(2);
         Document updateOplogEntry = oplogs.get(1);
-        OperationType op = OperationType.fromCode(updateOplogEntry.get("op").toString());
-        Document o2 = (Document) updateOplogEntry.get("o2");
-        Document o = (Document) updateOplogEntry.get("o");
+        OperationType op = OperationType.fromCode(updateOplogEntry.get(OPERATION_TYPE.getCode()).toString());
+        Document o2 = (Document) updateOplogEntry.get(ADDITIONAL_OPERATION_DOCUMENT.getCode());
+        Document o = (Document) updateOplogEntry.get(OPERATION_DOCUMENT.getCode());
         assertThat(op).isEqualTo(OperationType.UPDATE);
         assertThat(o2.get("_id")).isEqualTo(1);
         assertThat(o.get("$set")).isEqualTo(updatedDocument);
 
-        assertThat(updateOplogEntry.get("ns")).isEqualTo(collection.getNamespace().toString());
-        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get("ts");
+        assertThat(updateOplogEntry.get(NAMESPACE.getCode())).isEqualTo(collection.getNamespace().toString());
+        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get(TIMESTAMP.getCode());
         Instant instant = TEST_CLOCK.instant();
         BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
         assertThat(ts).isEqualTo(expectedTs);
 
-        Date wall = (Date) updateOplogEntry.get("wall");
+        Date wall = (Date) updateOplogEntry.get(WALL.getCode());
         assertThat(wall).isEqualTo(Date.from(instant));
     }
 
@@ -84,21 +91,21 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
         assertThat(oplogs.size()).isEqualTo(2);
         Document updateOplogEntry = oplogs.get(1);
-        OperationType op = OperationType.fromCode(updateOplogEntry.get("op").toString());
-        Document o2 = (Document) updateOplogEntry.get("o2");
-        Document o = (Document) updateOplogEntry.get("o");
+        OperationType op = OperationType.fromCode(updateOplogEntry.get(OPERATION_TYPE.getCode()).toString());
+        Document o2 = (Document) updateOplogEntry.get(ADDITIONAL_OPERATION_DOCUMENT.getCode());
+        Document o = (Document) updateOplogEntry.get(OPERATION_DOCUMENT.getCode());
 
         assertThat(op).isEqualTo(OperationType.UPDATE);
         assertThat(o2.get("_id")).isEqualTo(34);
         assertThat(o.get("$set")).isEqualTo(updatedDocument);
 
-        assertThat(updateOplogEntry.get("ns")).isEqualTo(collection.getNamespace().toString());
-        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get("ts");
+        assertThat(updateOplogEntry.get(NAMESPACE.getCode())).isEqualTo(collection.getNamespace().toString());
+        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get(TIMESTAMP.getCode());
         Instant instant = TEST_CLOCK.instant();
         BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
         assertThat(ts).isEqualTo(expectedTs);
 
-        Date wall = (Date) updateOplogEntry.get("wall");
+        Date wall = (Date) updateOplogEntry.get(WALL.getCode());
         assertThat(wall).isEqualTo(Date.from(instant));
     }
 
@@ -113,21 +120,21 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
         assertThat(oplogs.size()).isEqualTo(2);
         Document updateOplogEntry = oplogs.get(1);
-        OperationType op = OperationType.fromCode(updateOplogEntry.get("op").toString());
-        Document o2 = (Document) updateOplogEntry.get("o2");
-        Document o = (Document) updateOplogEntry.get("o");
+        OperationType op = OperationType.fromCode(updateOplogEntry.get(OPERATION_TYPE.getCode()).toString());
+        Document o2 = (Document) updateOplogEntry.get(ADDITIONAL_OPERATION_DOCUMENT.getCode());
+        Document o = (Document) updateOplogEntry.get(OPERATION_DOCUMENT.getCode());
 
         assertThat(op).isEqualTo(OperationType.UPDATE);
         assertThat(o2.get("_id")).isEqualTo(1);
         assertThat(o.get("$set")).isEqualTo(updatedDocument);
 
-        assertThat(updateOplogEntry.get("ns")).isEqualTo(collection.getNamespace().toString());
-        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get("ts");
+        assertThat(updateOplogEntry.get(NAMESPACE.getCode())).isEqualTo(collection.getNamespace().toString());
+        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get(TIMESTAMP.getCode());
         Instant instant = TEST_CLOCK.instant();
         BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
         assertThat(ts).isEqualTo(expectedTs);
 
-        Date wall = (Date) updateOplogEntry.get("wall");
+        Date wall = (Date) updateOplogEntry.get(WALL.getCode());
         assertThat(wall).isEqualTo(Date.from(instant));
     }
 
@@ -142,21 +149,21 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
         assertThat(oplogs.size()).isEqualTo(2);
         Document updateOplogEntry = oplogs.get(1);
-        OperationType op = OperationType.fromCode(updateOplogEntry.get("op").toString());
-        Document o2 = (Document) updateOplogEntry.get("o2");
-        Document o = (Document) updateOplogEntry.get("o");
+        OperationType op = OperationType.fromCode(updateOplogEntry.get(OPERATION_TYPE.getCode()).toString());
+        Document o2 = (Document) updateOplogEntry.get(ADDITIONAL_OPERATION_DOCUMENT.getCode());
+        Document o = (Document) updateOplogEntry.get(OPERATION_DOCUMENT.getCode());
 
         assertThat(op).isEqualTo(OperationType.UPDATE);
         assertThat(o2.get("_id")).isEqualTo(37);
         assertThat(o.get("$set")).isEqualTo(updatedDocument);
 
-        assertThat(updateOplogEntry.get("ns")).isEqualTo(collection.getNamespace().toString());
-        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get("ts");
+        assertThat(updateOplogEntry.get(NAMESPACE.getCode())).isEqualTo(collection.getNamespace().toString());
+        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get(TIMESTAMP.getCode());
         Instant instant = TEST_CLOCK.instant();
         BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
         assertThat(ts).isEqualTo(expectedTs);
 
-        Date wall = (Date) updateOplogEntry.get("wall");
+        Date wall = (Date) updateOplogEntry.get(WALL.getCode());
         assertThat(wall).isEqualTo(Date.from(instant));
     }
 
@@ -169,7 +176,7 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
         assertThat(oplogs.size()).isEqualTo(4);
 
-        List<Object> updatedIds = oplogs.stream().skip(2).map(d -> ((Document) d.get("o2")).get("_id"))
+        List<Object> updatedIds = oplogs.stream().skip(2).map(d -> ((Document) d.get(ADDITIONAL_OPERATION_DOCUMENT.getCode())).get("_id"))
             .collect(Collectors.toList());
 
         assertThat(updatedIds).containsExactly(37, 41);
@@ -186,12 +193,12 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
 
         assertThat(oplogs.size()).isEqualTo(3);
-        assertThat(oplogs.get(0).get("op")).isEqualTo("i");
-        assertThat(oplogs.get(0).get("o")).isEqualTo(doc);
-        assertThat(oplogs.get(1).get("op")).isEqualTo("u");
-        assertThat(oplogs.get(1).get("o")).isEqualTo(json("$set: {a: 6}"));
-        assertThat(oplogs.get(2).get("op")).isEqualTo("u");
-        assertThat(oplogs.get(2).get("o")).isEqualTo(json("$set: {b: 7}"));
+        assertThat(oplogs.get(0).get(OPERATION_TYPE.getCode())).isEqualTo("i");
+        assertThat(oplogs.get(0).get(OPERATION_DOCUMENT.getCode())).isEqualTo(doc);
+        assertThat(oplogs.get(1).get(OPERATION_TYPE.getCode())).isEqualTo("u");
+        assertThat(oplogs.get(1).get(OPERATION_DOCUMENT.getCode())).isEqualTo(json("$set: {a: 6}"));
+        assertThat(oplogs.get(2).get(OPERATION_TYPE.getCode())).isEqualTo("u");
+        assertThat(oplogs.get(2).get(OPERATION_DOCUMENT.getCode())).isEqualTo(json("$set: {b: 7}"));
     }
 
     @Test
