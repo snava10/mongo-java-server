@@ -55,12 +55,18 @@ public class CollectionBackedOplog extends AbstractOplog {
 
     private Document buildUpdateOperationDocument(Document document) {
         Document mergedDoc = Utils.mergeUpdateDocuments(document);
-        if (mergedDoc.containsKey("$set")) {
-            // This is a result of an update one
-            return mergedDoc;
+        if (mergedDoc.containsKey("_id")) {
+            // This is a result of a replace one
+            mergedDoc.remove("_id");
+            return new Document("$set", mergedDoc);
         }
-        // This is a result of a replace one
-        mergedDoc.remove("_id");
-        return new Document("$set", mergedDoc);
+
+        if (mergedDoc.containsKey("$unset")) {
+            if (mergedDoc.get("$unset").getClass().equals(Document.class)) {
+                Document doc = (Document)mergedDoc.get("$unset");
+                doc.keySet().forEach(k -> doc.put(k, true));
+            }
+        }
+        return mergedDoc;
     }
 }

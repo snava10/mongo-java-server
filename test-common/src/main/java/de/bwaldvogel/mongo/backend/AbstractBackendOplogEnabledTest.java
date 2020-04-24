@@ -2,7 +2,9 @@ package de.bwaldvogel.mongo.backend;
 
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.or;
+import static com.mongodb.client.model.Updates.combine;
 import static com.mongodb.client.model.Updates.set;
+import static com.mongodb.client.model.Updates.unset;
 import static de.bwaldvogel.mongo.backend.TestUtils.json;
 import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.ADDITIONAL_OPERATION_DOCUMENT;
 import static de.bwaldvogel.mongo.oplog.OplogDocumentFieldName.NAMESPACE;
@@ -55,7 +57,7 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
     }
 
     @Test
-    public void testOplogReplaceOneById() {
+    public void testSetOplogReplaceOneById() {
         collection.insertOne(json("_id: 1, b: 6"));
         Document updatedDocument = json("a: 5, b: 7");
         collection.replaceOne(json("_id: 1"), updatedDocument);
@@ -81,7 +83,7 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
     }
 
     @Test
-    public void testOplogUpdateOneById() {
+    public void testSetOplogUpdateOneById() {
         collection.insertOne(json("_id: 34, b: 6"));
         Document updatedDocument = json("a: 6");
         collection.updateOne(eq("_id", 34), set("a", 6));
@@ -110,7 +112,7 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
     }
 
     @Test
-    public void testOplogUpdateOneManyFieldsUsingDriverHelpers() {
+    public void testSetOplogUpdateOneManyFieldsUsingDriverHelpers() {
         collection.insertOne(json("_id: 1, b: 6"));
         Document updatedDocument = json("a: 7, b: 7");
         collection.updateOne(eq("_id", 1), Arrays.asList(set("a", 7), set("b", 7)));
@@ -139,7 +141,7 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
     }
 
     @Test
-    public void testOplogUpdateOneFilteringByOtherThanId() {
+    public void testSetOplogUpdateOneFilteringByOtherThanId() {
         collection.insertOne(json("_id: 37, b: 6"));
         Document updatedDocument = json("a: 7, b: 7");
         collection.updateOne(eq("b", 6), Arrays.asList(set("a", 7), set("b", 7)));
@@ -168,7 +170,7 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
     }
 
     @Test
-    public void testUpdateManyUpdatedIdsShouldBeReflectedInOplog() {
+    public void testSetUpdateManyUpdatedIdsShouldBeReflectedInOplog() {
         collection.insertMany(Arrays.asList(json("_id: 37, b: 6"), json("_id: 41, b: 7")));
         Document updatedDocument = json("a: 7, b: 7");
         collection.updateMany(or(eq("b", 6), eq("b", 7)), Arrays.asList(set("a", 7), set("b", 7)));
@@ -183,7 +185,7 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
     }
 
     @Test
-    public void testMultipleUpdatesInARow() {
+    public void testSetMultipleUpdatesInARow() {
         Document doc = json("_id: 34, b: 6");
         collection.insertOne(doc);
         collection.updateOne(eq("_id", 34), set("a", 6));
@@ -199,6 +201,88 @@ public abstract class AbstractBackendOplogEnabledTest extends AbstractBackendTes
         assertThat(oplogs.get(1).get(OPERATION_DOCUMENT.getCode())).isEqualTo(json("$set: {a: 6}"));
         assertThat(oplogs.get(2).get(OPERATION_TYPE.getCode())).isEqualTo("u");
         assertThat(oplogs.get(2).get(OPERATION_DOCUMENT.getCode())).isEqualTo(json("$set: {b: 7}"));
+    }
+
+    @Test
+    public void testUnsetOplogById() {
+        collection.insertOne(json("_id: 1, b: 6"));
+        collection.updateOne(json("_id: 1"), unset("b"));
+        List<Document> oplogs = new ArrayList<>();
+        oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
+
+        assertThat(oplogs.size()).isEqualTo(2);
+        Document updateOplogEntry = oplogs.get(1);
+
+        OperationType op = OperationType.fromCode(updateOplogEntry.get(OPERATION_TYPE.getCode()).toString());
+        Document o2 = (Document) updateOplogEntry.get(ADDITIONAL_OPERATION_DOCUMENT.getCode());
+        Document o = (Document) updateOplogEntry.get(OPERATION_DOCUMENT.getCode());
+        assertThat(op).isEqualTo(OperationType.UPDATE);
+        assertThat(o2.get("_id")).isEqualTo(1);
+        assertThat(o.get("$unset")).isEqualTo(json("b: true"));
+
+        assertThat(updateOplogEntry.get(NAMESPACE.getCode())).isEqualTo(collection.getNamespace().toString());
+        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get(TIMESTAMP.getCode());
+        Instant instant = TEST_CLOCK.instant();
+        BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
+        assertThat(ts).isEqualTo(expectedTs);
+
+        Date wall = (Date) updateOplogEntry.get(WALL.getCode());
+        assertThat(wall).isEqualTo(Date.from(instant));
+    }
+
+    @Test
+    public void testMultipleUnsetOplogById() {
+        collection.insertOne(json("_id: 1, b: 6, a: 4"));
+        collection.updateOne(json("_id: 1"), combine(unset("b"), unset("a")));
+        List<Document> oplogs = new ArrayList<>();
+        oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
+
+        assertThat(oplogs.size()).isEqualTo(2);
+        Document updateOplogEntry = oplogs.get(1);
+
+        OperationType op = OperationType.fromCode(updateOplogEntry.get(OPERATION_TYPE.getCode()).toString());
+        Document o2 = (Document) updateOplogEntry.get(ADDITIONAL_OPERATION_DOCUMENT.getCode());
+        Document o = (Document) updateOplogEntry.get(OPERATION_DOCUMENT.getCode());
+        assertThat(op).isEqualTo(OperationType.UPDATE);
+        assertThat(o2.get("_id")).isEqualTo(1);
+        assertThat(o.get("$unset")).isEqualTo(json("b: true, a: true"));
+
+        assertThat(updateOplogEntry.get(NAMESPACE.getCode())).isEqualTo(collection.getNamespace().toString());
+        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get(TIMESTAMP.getCode());
+        Instant instant = TEST_CLOCK.instant();
+        BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
+        assertThat(ts).isEqualTo(expectedTs);
+
+        Date wall = (Date) updateOplogEntry.get(WALL.getCode());
+        assertThat(wall).isEqualTo(Date.from(instant));
+    }
+
+    @Test
+    public void testMultipleSetUnsetOplogById() {
+        collection.insertOne(json("_id: 1, b: 6, a: 4, c: 7, d: 8"));
+        collection.updateOne(json("_id: 1"), combine(set("b", 5), set("a",5), unset("c"), unset("d")));
+        List<Document> oplogs = new ArrayList<>();
+        oplogCollection.find().forEach((Consumer<Document>) oplogs::add);
+
+        assertThat(oplogs.size()).isEqualTo(2);
+        Document updateOplogEntry = oplogs.get(1);
+
+        OperationType op = OperationType.fromCode(updateOplogEntry.get(OPERATION_TYPE.getCode()).toString());
+        Document o2 = (Document) updateOplogEntry.get(ADDITIONAL_OPERATION_DOCUMENT.getCode());
+        Document o = (Document) updateOplogEntry.get(OPERATION_DOCUMENT.getCode());
+        assertThat(op).isEqualTo(OperationType.UPDATE);
+        assertThat(o2.get("_id")).isEqualTo(1);
+        assertThat(o.get("$set")).isEqualTo(json("b: 5, a: 5"));
+        assertThat(o.get("$unset")).isEqualTo(json("c: true, d: true"));
+
+        assertThat(updateOplogEntry.get(NAMESPACE.getCode())).isEqualTo(collection.getNamespace().toString());
+        BsonTimestamp ts = (BsonTimestamp) updateOplogEntry.get(TIMESTAMP.getCode());
+        Instant instant = TEST_CLOCK.instant();
+        BsonTimestamp expectedTs = new BsonTimestamp(instant.toEpochMilli());
+        assertThat(ts).isEqualTo(expectedTs);
+
+        Date wall = (Date) updateOplogEntry.get(WALL.getCode());
+        assertThat(wall).isEqualTo(Date.from(instant));
     }
 
     @Test
