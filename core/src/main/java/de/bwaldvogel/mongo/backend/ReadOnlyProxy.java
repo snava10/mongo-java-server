@@ -121,6 +121,10 @@ public class ReadOnlyProxy implements MongoBackend {
     }
 
     @Override
+    public void setServerAddress(String serverAddress) {
+    }
+
+    @Override
     public Document getServerStatus() {
         return backend.getServerStatus();
     }

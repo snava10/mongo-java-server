@@ -64,6 +64,7 @@ public abstract class AbstractMongoBackend implements MongoBackend {
     private final CursorRegistry cursorRegistry = new CursorRegistry();
 
     protected Oplog oplog = NoopOplog.get();
+    private String serverAddress;
 
     protected AbstractMongoBackend() {
         this(defaultClock());
@@ -314,6 +315,11 @@ public abstract class AbstractMongoBackend implements MongoBackend {
             response.put("maxWireVersion", Integer.valueOf(version.getWireVersion()));
             response.put("minWireVersion", Integer.valueOf(0));
             response.put("localTime", Instant.now(clock));
+            response.put("setName", "rs0");
+            response.put("hosts", Collections.singleton(serverAddress));
+            response.put("me", serverAddress);
+            response.put("primary", serverAddress);
+            response.put("logicalSessionTimeoutMinutes", 10);
             Utils.markOkay(response);
             return response;
         } else if (command.equalsIgnoreCase("buildinfo")) {
@@ -530,6 +536,11 @@ public abstract class AbstractMongoBackend implements MongoBackend {
     @Override
     public void enableOplog() {
         oplog = createOplog();
+    }
+
+    @Override
+    public void setServerAddress(String serverAddress) {
+        this.serverAddress = serverAddress;
     }
 
     protected Oplog createOplog() {

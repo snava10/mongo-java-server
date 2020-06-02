@@ -2,8 +2,10 @@ package de.bwaldvogel.mongo.backend;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+import com.mongodb.MongoClientOptions;
 import org.assertj.core.api.AbstractBooleanAssert;
 import org.assertj.core.api.AbstractDoubleAssert;
 import org.assertj.core.api.AbstractIntegerAssert;
@@ -80,7 +82,9 @@ public abstract class AbstractTest {
     }
 
     private static void setUpClients() throws Exception {
-        syncClient = new com.mongodb.MongoClient(new ServerAddress(serverAddress));
+        syncClient = new com.mongodb.MongoClient(Collections.singletonList(new ServerAddress(serverAddress)), MongoClientOptions.builder()
+            .requiredReplicaSetName("rs0")
+            .build());
         asyncClient = com.mongodb.reactivestreams.client.MongoClients.create("mongodb://" + serverAddress.getHostName() + ":" + serverAddress.getPort());
         db = syncClient.getDatabase(TEST_DATABASE_NAME);
         collection = db.getCollection("testcoll");
@@ -94,6 +98,7 @@ public abstract class AbstractTest {
         backend = createBackend();
         mongoServer = new MongoServer(backend);
         serverAddress = mongoServer.bind();
+        backend.setServerAddress(String.format("%s:%d", serverAddress.getHostName(), serverAddress.getPort()));
     }
 
     private static void closeClients() {
