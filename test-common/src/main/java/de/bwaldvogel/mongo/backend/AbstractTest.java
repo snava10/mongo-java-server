@@ -82,9 +82,7 @@ public abstract class AbstractTest {
     }
 
     private static void setUpClients() throws Exception {
-        syncClient = new com.mongodb.MongoClient(Collections.singletonList(new ServerAddress(serverAddress)), MongoClientOptions.builder()
-            .requiredReplicaSetName("rs0")
-            .build());
+        syncClient = new com.mongodb.MongoClient(new ServerAddress(serverAddress));
         asyncClient = com.mongodb.reactivestreams.client.MongoClients.create("mongodb://" + serverAddress.getHostName() + ":" + serverAddress.getPort());
         db = syncClient.getDatabase(TEST_DATABASE_NAME);
         collection = db.getCollection("testcoll");
@@ -98,7 +96,6 @@ public abstract class AbstractTest {
         backend = createBackend();
         mongoServer = new MongoServer(backend);
         serverAddress = mongoServer.bind();
-        backend.setServerAddress(String.format("%s:%d", serverAddress.getHostName(), serverAddress.getPort()));
     }
 
     private static void closeClients() {

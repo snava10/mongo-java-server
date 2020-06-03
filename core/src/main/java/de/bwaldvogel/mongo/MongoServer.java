@@ -1,5 +1,6 @@
 package de.bwaldvogel.mongo;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.security.PrivateKey;
@@ -102,7 +103,10 @@ public class MongoServer {
                 });
 
             channel = bootstrap.bind().syncUninterruptibly().channel();
-
+            InetSocketAddress localAddress = getLocalAddress();
+            if (localAddress != null) {
+                backend.setServerAddress(String.format("%s:%d", localAddress.getHostName(), localAddress.getPort()));
+            }
             log.info("started {}", this);
         } catch (RuntimeException e) {
             shutdownNow();
