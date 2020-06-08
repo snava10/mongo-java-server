@@ -319,7 +319,8 @@ public abstract class AbstractMongoBackend implements MongoBackend {
             response.put("hosts", Collections.singleton(serverAddress));
             response.put("me", serverAddress);
             response.put("primary", serverAddress);
-            response.put("logicalSessionTimeoutMinutes", 1);
+            response.put("logicalSessionTimeoutMinutes", 100);
+            response.put("connectionId", 21210);
             Utils.markOkay(response);
             return response;
         } else if (command.equalsIgnoreCase("buildinfo")) {

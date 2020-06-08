@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.mongodb.MongoClientOptions;
+import com.mongodb.client.ClientSession;
 import org.assertj.core.api.AbstractBooleanAssert;
 import org.assertj.core.api.AbstractDoubleAssert;
 import org.assertj.core.api.AbstractIntegerAssert;
