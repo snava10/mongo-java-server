@@ -40,7 +40,7 @@ public abstract class AbstractTransactionTest extends AbstractTest {
 
     @Test
     public void testTransactionShouldOnlyApplyChangesAfterCommitting() {
-//        collection.insertOne(json("_id: 1, value: 1"));
+        collection.insertOne(json("_id: 1, value: 1"));
         ClientSession clientSession = syncClient.startSession();
         clientSession.startTransaction();
         ServerSession serverSession = clientSession.getServerSession();

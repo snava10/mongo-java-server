@@ -97,6 +97,7 @@ public abstract class AbstractTest {
         backend = createBackend();
         mongoServer = new MongoServer(backend);
         serverAddress = mongoServer.bind();
+        backend.setServerAddress(String.format("%s:%d", serverAddress.getHostName(), serverAddress.getPort()));
     }
 
     private static void closeClients() {
