@@ -14,13 +14,15 @@ import de.bwaldvogel.mongo.backend.IndexKey;
 import de.bwaldvogel.mongo.backend.postgresql.index.PostgresUniqueIndex;
 import de.bwaldvogel.mongo.exception.MongoServerException;
 import de.bwaldvogel.mongo.oplog.Oplog;
+import de.bwaldvogel.mongo.session.SessionRegistry;
 
 public class PostgresqlDatabase extends AbstractSynchronizedMongoDatabase<Long> {
 
     private final PostgresqlBackend backend;
 
-    public PostgresqlDatabase(String databaseName, PostgresqlBackend backend, CursorRegistry cursorRegistry) {
-        super(databaseName, cursorRegistry);
+    public PostgresqlDatabase(String databaseName, PostgresqlBackend backend, CursorRegistry cursorRegistry,
+                              SessionRegistry sessionRegistry) {
+        super(databaseName, cursorRegistry, sessionRegistry);
         this.backend = backend;
         initializeNamespacesAndIndexes();
     }

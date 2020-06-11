@@ -17,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import de.bwaldvogel.mongo.session.SessionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,9 +60,12 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
 
     protected final CursorRegistry cursorRegistry;
 
-    protected AbstractMongoDatabase(String databaseName, CursorRegistry cursorRegistry) {
+    protected final SessionRegistry sessionRegistry;
+
+    protected AbstractMongoDatabase(String databaseName, CursorRegistry cursorRegistry, SessionRegistry sessionRegistry) {
         this.databaseName = databaseName;
         this.cursorRegistry = cursorRegistry;
+        this.sessionRegistry = sessionRegistry;
     }
 
     protected void initializeNamespacesAndIndexes() {

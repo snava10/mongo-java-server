@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import de.bwaldvogel.mongo.session.SessionRegistry;
 import org.h2.mvstore.FileStore;
 import org.h2.mvstore.MVMap;
 import org.h2.mvstore.MVStore;
@@ -30,8 +31,8 @@ public class H2Database extends AbstractSynchronizedMongoDatabase<Object> {
 
     private final MVStore mvStore;
 
-    public H2Database(String databaseName, MVStore mvStore, CursorRegistry cursorRegistry) {
-        super(databaseName, cursorRegistry);
+    public H2Database(String databaseName, MVStore mvStore, CursorRegistry cursorRegistry, SessionRegistry sessionRegistry) {
+        super(databaseName, cursorRegistry, sessionRegistry);
         this.mvStore = mvStore;
         initializeNamespacesAndIndexes();
     }

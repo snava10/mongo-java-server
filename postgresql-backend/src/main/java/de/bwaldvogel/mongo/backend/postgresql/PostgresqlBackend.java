@@ -41,7 +41,7 @@ public class PostgresqlBackend extends AbstractMongoBackend {
             throw new MongoServerException("failed to open or create database", e);
         }
 
-        return new PostgresqlDatabase(databaseName, this, getCursorRegistry());
+        return new PostgresqlDatabase(databaseName, this, getCursorRegistry(), getSessionRegistry());
     }
 
     public Connection getConnection() throws SQLException {

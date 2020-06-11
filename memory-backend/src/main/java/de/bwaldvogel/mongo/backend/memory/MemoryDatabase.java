@@ -8,11 +8,12 @@ import de.bwaldvogel.mongo.backend.CursorRegistry;
 import de.bwaldvogel.mongo.backend.Index;
 import de.bwaldvogel.mongo.backend.IndexKey;
 import de.bwaldvogel.mongo.backend.memory.index.MemoryUniqueIndex;
+import de.bwaldvogel.mongo.session.SessionRegistry;
 
 public class MemoryDatabase extends AbstractSynchronizedMongoDatabase<Integer> {
 
-    public MemoryDatabase(String databaseName, CursorRegistry cursorRegistry) {
-        super(databaseName, cursorRegistry);
+    public MemoryDatabase(String databaseName, CursorRegistry cursorRegistry, SessionRegistry sessionRegistry) {
+        super(databaseName, cursorRegistry, sessionRegistry);
         initializeNamespacesAndIndexes();
     }
 

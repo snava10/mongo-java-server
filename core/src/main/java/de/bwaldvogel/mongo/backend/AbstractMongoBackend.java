@@ -17,6 +17,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import de.bwaldvogel.mongo.session.SessionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +63,7 @@ public abstract class AbstractMongoBackend implements MongoBackend {
     private final Instant started;
 
     private final CursorRegistry cursorRegistry = new CursorRegistry();
+    private final SessionRegistry sessionRegistry = new SessionRegistry();
 
     protected Oplog oplog = NoopOplog.get();
     private String serverAddress;
@@ -555,6 +557,10 @@ public abstract class AbstractMongoBackend implements MongoBackend {
 
     protected CursorRegistry getCursorRegistry() {
         return cursorRegistry;
+    }
+
+    protected SessionRegistry getSessionRegistry() {
+        return sessionRegistry;
     }
 
 }
