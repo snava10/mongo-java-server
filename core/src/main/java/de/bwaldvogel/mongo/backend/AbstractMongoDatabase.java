@@ -3,12 +3,7 @@ package de.bwaldvogel.mongo.backend;
 import static de.bwaldvogel.mongo.backend.Constants.ID_FIELD;
 import static de.bwaldvogel.mongo.backend.Constants.PRIMARY_KEY_INDEX_NAME;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
@@ -17,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import de.bwaldvogel.mongo.session.Session;
 import de.bwaldvogel.mongo.session.SessionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -315,6 +311,8 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
     }
 
     private Document commandUpdate(Channel channel, String command, Document query, Oplog oplog) {
+        Session session = sessionRegistry.resolveSession(Utils.getSessionId(query));
+
         clearLastStatus(channel);
         String collectionName = query.get(command).toString();
         boolean isOrdered = Utils.isTrue(query.get("ordered"));

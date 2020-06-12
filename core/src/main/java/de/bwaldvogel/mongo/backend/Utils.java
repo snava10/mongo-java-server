@@ -2,13 +2,8 @@ package de.bwaldvogel.mongo.backend;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -621,6 +616,13 @@ public class Utils {
         if (!(value instanceof Missing)) {
             changeSubdocumentValue(result, key, value);
         }
+    }
+
+    public static UUID getSessionId(Document document) {
+        if (document.containsKey("lsid")) {
+            return (UUID) ((Document)document.get("lsid")).get("id");
+        }
+        return null;
     }
 
 }

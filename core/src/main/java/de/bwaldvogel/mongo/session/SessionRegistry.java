@@ -9,6 +9,9 @@ public class SessionRegistry {
     private ConcurrentMap<UUID, Session> sessionMap = new ConcurrentHashMap<>();
 
     public Session resolveSession(UUID sessionId) {
+        if (sessionId == null) {
+            return resolveSession(UUID.randomUUID());
+        }
         return sessionMap.putIfAbsent(sessionId, new Session(sessionId));
     }
 
