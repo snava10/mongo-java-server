@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
+import com.mongodb.reactivestreams.client.Success;
+import io.reactivex.subscribers.TestSubscriber;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonTimestamp;
@@ -353,6 +355,23 @@ public abstract class AbstractOplogTest extends AbstractTest {
         assertThat(document2.getFullDocument().get("a")).isEqualTo(2);
         document2 = cursor2.next();
         assertThat(document2.getFullDocument().get("a")).isEqualTo(3);
+    }
+
+    @Test
+    public void testChangeStreamsReactive() {
+        TestSubscriber<Success> insertSubscriber = new TestSubscriber<>();
+        asyncCollection.insertOne(json("a: 1")).subscribe(insertSubscriber);
+        insertSubscriber.awaitTerminalEvent();
+        insertSubscriber.assertNoErrors();
+
+        TestSubscriber<ChangeStreamDocument<Document>> streamSubscriber = new TestSubscriber<>();
+        asyncCollection.watch().fullDocument(FullDocument.UPDATE_LOOKUP).subscribe(streamSubscriber);
+        insertSubscriber = new TestSubscriber<>();
+        asyncCollection.insertOne(json("a: 2")).subscribe(insertSubscriber);
+        insertSubscriber.awaitTerminalEvent();
+        insertSubscriber.assertNoErrors();
+        streamSubscriber.awaitCount(1);
+        streamSubscriber.assertValueCount(1);
     }
 
 }
