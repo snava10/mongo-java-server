@@ -2,12 +2,13 @@ package de.bwaldvogel.mongo.backend;
 
 import de.bwaldvogel.mongo.MongoCollection;
 import de.bwaldvogel.mongo.bson.Document;
+import de.bwaldvogel.mongo.session.SessionRegistry;
 import io.netty.channel.Channel;
 
 public abstract class AbstractSynchronizedMongoDatabase<P> extends AbstractMongoDatabase<P> {
 
-    protected AbstractSynchronizedMongoDatabase(String databaseName, CursorRegistry cursorRegistry) {
-        super(databaseName, cursorRegistry);
+    protected AbstractSynchronizedMongoDatabase(String databaseName, CursorRegistry cursorRegistry, SessionRegistry sessionRegistry) {
+        super(databaseName, cursorRegistry, sessionRegistry);
     }
 
     @Override
