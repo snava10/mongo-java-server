@@ -5,10 +5,12 @@ import de.bwaldvogel.mongo.bson.Document;
 import de.bwaldvogel.mongo.session.SessionRegistry;
 import io.netty.channel.Channel;
 
+import java.util.concurrent.CountDownLatch;
+
 public abstract class AbstractSynchronizedMongoDatabase<P> extends AbstractMongoDatabase<P> {
 
-    protected AbstractSynchronizedMongoDatabase(String databaseName, CursorRegistry cursorRegistry, SessionRegistry sessionRegistry) {
-        super(databaseName, cursorRegistry, sessionRegistry);
+    protected AbstractSynchronizedMongoDatabase(String databaseName, CursorRegistry cursorRegistry) {
+        super(databaseName, cursorRegistry);
     }
 
     @Override

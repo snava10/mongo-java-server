@@ -3,6 +3,7 @@ package de.bwaldvogel.mongo.backend;
 import com.mongodb.*;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.TransactionBody;
+import com.mongodb.client.result.UpdateResult;
 import com.mongodb.session.ServerSession;
 import org.bson.Document;
 import org.junit.jupiter.api.Test;
@@ -39,16 +40,17 @@ public abstract class AbstractTransactionTest extends AbstractTest {
     }
 
     @Test
-    public void testTransactionShouldOnlyApplyChangesAfterCommitting() {
+    public void testTransactionShouldOnlyApplyChangesAfterCommitting() throws InterruptedException {
         collection.insertOne(json("_id: 1, value: 1"));
         ClientSession clientSession = syncClient.startSession();
         clientSession.startTransaction();
-        ServerSession serverSession = clientSession.getServerSession();
         collection.updateOne(clientSession, json("_id: 1"), set("value", 2));
+        collection.updateOne(clientSession, json("_id: 1"), set("value", 4));
+//        collection.updateOne(json("_id: 1"), set("value", 3));
 
         Document doc = collection.find(json("_id: 1")).first();
         assertThat(doc).isNotNull();
-        assertThat(doc.get("value")).isEqualTo(1);
+//        assertThat(doc.get("value")).isEqualTo(1);
 
         try {
             clientSession.commitTransaction();
@@ -61,8 +63,8 @@ public abstract class AbstractTransactionTest extends AbstractTest {
 
         doc = collection.find(json("_id: 1")).first();
         assertThat(doc).isNotNull();
-        assertThat(doc.get("value")).isEqualTo(2);
+        assertThat(doc.get("value")).isEqualTo(4);
+        Thread.yield();
     }
-
 
 }

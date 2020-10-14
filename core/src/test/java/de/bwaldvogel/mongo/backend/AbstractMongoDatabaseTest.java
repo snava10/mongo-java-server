@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CountDownLatch;
 
 import de.bwaldvogel.mongo.session.SessionRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,13 +22,11 @@ class AbstractMongoDatabaseTest {
 
     private AbstractMongoDatabase<Object> database;
     private CursorRegistry cursorRegistry;
-    private SessionRegistry sessionRegistry;
 
     @BeforeEach
     public void setup() {
         cursorRegistry = Mockito.mock(CursorRegistry.class);
-        sessionRegistry = Mockito.mock(SessionRegistry.class);
-        database = new AbstractMongoDatabase<Object>("testdb", cursorRegistry, sessionRegistry) {
+        database = new AbstractMongoDatabase<Object>("testdb", cursorRegistry, new CountDownLatch(0)) {
 
             @Override
             protected long getFileSize() {

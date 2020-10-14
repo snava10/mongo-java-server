@@ -20,9 +20,8 @@ public class PostgresqlDatabase extends AbstractSynchronizedMongoDatabase<Long> 
 
     private final PostgresqlBackend backend;
 
-    public PostgresqlDatabase(String databaseName, PostgresqlBackend backend, CursorRegistry cursorRegistry,
-                              SessionRegistry sessionRegistry) {
-        super(databaseName, cursorRegistry, sessionRegistry);
+    public PostgresqlDatabase(String databaseName, PostgresqlBackend backend, CursorRegistry cursorRegistry) {
+        super(databaseName, cursorRegistry);
         this.backend = backend;
         initializeNamespacesAndIndexes();
     }

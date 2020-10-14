@@ -1,5 +1,23 @@
 package de.bwaldvogel.mongo.backend;
 
+import de.bwaldvogel.mongo.MongoBackend;
+import de.bwaldvogel.mongo.MongoCollection;
+import de.bwaldvogel.mongo.MongoDatabase;
+import de.bwaldvogel.mongo.ServerVersion;
+import de.bwaldvogel.mongo.bson.Document;
+import de.bwaldvogel.mongo.exception.*;
+import de.bwaldvogel.mongo.oplog.CollectionBackedOplog;
+import de.bwaldvogel.mongo.oplog.NoopOplog;
+import de.bwaldvogel.mongo.oplog.Oplog;
+import de.bwaldvogel.mongo.session.Session;
+import de.bwaldvogel.mongo.util.FutureUtils;
+import de.bwaldvogel.mongo.wire.BsonConstants;
+import de.bwaldvogel.mongo.wire.MongoWireProtocolHandler;
+import de.bwaldvogel.mongo.wire.message.*;
+import io.netty.channel.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -7,45 +25,10 @@ import java.net.UnknownHostException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-
-import de.bwaldvogel.mongo.session.SessionRegistry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import de.bwaldvogel.mongo.MongoBackend;
-import de.bwaldvogel.mongo.MongoCollection;
-import de.bwaldvogel.mongo.MongoDatabase;
-import de.bwaldvogel.mongo.ServerVersion;
-import de.bwaldvogel.mongo.bson.Document;
-import de.bwaldvogel.mongo.exception.MongoServerException;
-import de.bwaldvogel.mongo.exception.MongoSilentServerException;
-import de.bwaldvogel.mongo.exception.NamespaceExistsException;
-import de.bwaldvogel.mongo.exception.NoReplicationEnabledException;
-import de.bwaldvogel.mongo.exception.NoSuchCommandException;
-import de.bwaldvogel.mongo.oplog.CollectionBackedOplog;
-import de.bwaldvogel.mongo.oplog.NoopOplog;
-import de.bwaldvogel.mongo.oplog.Oplog;
-import de.bwaldvogel.mongo.util.FutureUtils;
-import de.bwaldvogel.mongo.wire.BsonConstants;
-import de.bwaldvogel.mongo.wire.MongoWireProtocolHandler;
-import de.bwaldvogel.mongo.wire.message.Message;
-import de.bwaldvogel.mongo.wire.message.MongoDelete;
-import de.bwaldvogel.mongo.wire.message.MongoGetMore;
-import de.bwaldvogel.mongo.wire.message.MongoInsert;
-import de.bwaldvogel.mongo.wire.message.MongoKillCursors;
-import de.bwaldvogel.mongo.wire.message.MongoMessage;
-import de.bwaldvogel.mongo.wire.message.MongoQuery;
-import de.bwaldvogel.mongo.wire.message.MongoUpdate;
-import io.netty.channel.Channel;
 
 public abstract class AbstractMongoBackend implements MongoBackend {
 
@@ -63,7 +46,6 @@ public abstract class AbstractMongoBackend implements MongoBackend {
     private final Instant started;
 
     private final CursorRegistry cursorRegistry = new CursorRegistry();
-    private final SessionRegistry sessionRegistry = new SessionRegistry();
 
     protected Oplog oplog = NoopOplog.get();
     private String serverAddress;
@@ -85,13 +67,16 @@ public abstract class AbstractMongoBackend implements MongoBackend {
         return resolveDatabase(message.getDatabaseName());
     }
 
+    private final Map<UUID, Session> sessionMap = new ConcurrentHashMap<>();
+    private final Session defaultSession = new Session(UUID.randomUUID(), oplog);
+
     @Override
     public MongoDatabase resolveDatabase(String databaseName) {
-        return databases.computeIfAbsent(databaseName, name -> {
-            MongoDatabase database = openOrCreateDatabase(databaseName);
-            log.info("created database {}", database.getDatabaseName());
-            return database;
-        });
+        return resolveDatabase(databaseName, defaultSession);
+    }
+
+    public MongoDatabase resolveDatabase(String databaseName, Session session) {
+        return session.resolveDatabase(databaseName, this::openOrCreateDatabase);
     }
 
     @Override
@@ -337,6 +322,14 @@ public abstract class AbstractMongoBackend implements MongoBackend {
             return handleGetMore(databaseName, command, query);
         } else if (command.equalsIgnoreCase("killCursors")) {
             return handleKillCursors(query);
+        } else if (command.equalsIgnoreCase("commitTransaction")) {
+            try {
+                UUID sessionId = (UUID) ((Document) query.get("lsid")).get("id");
+                return new Document("lsid", sessionId);
+            } finally {
+                // Releasing the lock as the transaction completes
+//                transactionLatch.countDown();
+            }
         }
         return null;
     }
@@ -502,6 +495,7 @@ public abstract class AbstractMongoBackend implements MongoBackend {
     @Override
     public void dropDatabase(String databaseName) {
         MongoDatabase removedDatabase = databases.remove(databaseName);
+        defaultSession.dropDatabase(databaseName);
         if (removedDatabase != null) {
             removedDatabase.drop(oplog);
         }
@@ -559,8 +553,5 @@ public abstract class AbstractMongoBackend implements MongoBackend {
         return cursorRegistry;
     }
 
-    protected SessionRegistry getSessionRegistry() {
-        return sessionRegistry;
-    }
 
 }

@@ -12,8 +12,8 @@ import de.bwaldvogel.mongo.session.SessionRegistry;
 
 public class MemoryDatabase extends AbstractSynchronizedMongoDatabase<Integer> {
 
-    public MemoryDatabase(String databaseName, CursorRegistry cursorRegistry, SessionRegistry sessionRegistry) {
-        super(databaseName, cursorRegistry, sessionRegistry);
+    public MemoryDatabase(String databaseName, CursorRegistry cursorRegistry) {
+        super(databaseName, cursorRegistry);
         initializeNamespacesAndIndexes();
     }
 

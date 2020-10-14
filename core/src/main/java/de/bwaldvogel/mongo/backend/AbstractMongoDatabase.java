@@ -9,11 +9,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import de.bwaldvogel.mongo.session.Session;
-import de.bwaldvogel.mongo.session.SessionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,13 +55,20 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
     private MongoCollection<P> namespaces;
 
     protected final CursorRegistry cursorRegistry;
+    private CountDownLatch transactionLatch;
+    private Session currentSession = null;
+    private Map<String, MongoCollection<P>> currentSessionCollections = new ConcurrentHashMap<>();
 
-    protected final SessionRegistry sessionRegistry;
+//    protected final SessionRegistry sessionRegistry;
 
-    protected AbstractMongoDatabase(String databaseName, CursorRegistry cursorRegistry, SessionRegistry sessionRegistry) {
+    protected AbstractMongoDatabase(String databaseName, CursorRegistry cursorRegistry, CountDownLatch transactionLatch) {
         this.databaseName = databaseName;
         this.cursorRegistry = cursorRegistry;
-        this.sessionRegistry = sessionRegistry;
+        this.transactionLatch = transactionLatch;
+    }
+
+    protected AbstractMongoDatabase(String databaseName, CursorRegistry cursorRegistry) {
+        this(databaseName, cursorRegistry, new CountDownLatch(0));
     }
 
     protected void initializeNamespacesAndIndexes() {
@@ -113,6 +120,15 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
         } else if (command.equalsIgnoreCase("insert")) {
             return commandInsert(channel, command, query, oplog);
         } else if (command.equalsIgnoreCase("update")) {
+            if (currentSession == null || !currentSession.sessionId().equals(Utils.getSessionId(query))) {
+                log.debug(Thread.currentThread().getName() + " Trying to acquire lock " + Utils.getSessionId(query));
+                try {
+                    transactionLatch.await();
+                    currentSession = new Session(Utils.getSessionId(query), oplog);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
             return commandUpdate(channel, command, query, oplog);
         } else if (command.equalsIgnoreCase("delete")) {
             return commandDelete(channel, command, query, oplog);
@@ -307,12 +323,13 @@ public abstract class AbstractMongoDatabase<P> implements MongoDatabase {
         }
         // odd by true: also mark error as okay
         Utils.markOkay(result);
+
+
+
         return result;
     }
 
     private Document commandUpdate(Channel channel, String command, Document query, Oplog oplog) {
-        Session session = sessionRegistry.resolveSession(Utils.getSessionId(query));
-
         clearLastStatus(channel);
         String collectionName = query.get(command).toString();
         boolean isOrdered = Utils.isTrue(query.get("ordered"));

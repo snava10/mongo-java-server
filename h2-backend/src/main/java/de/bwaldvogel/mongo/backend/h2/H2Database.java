@@ -31,8 +31,8 @@ public class H2Database extends AbstractSynchronizedMongoDatabase<Object> {
 
     private final MVStore mvStore;
 
-    public H2Database(String databaseName, MVStore mvStore, CursorRegistry cursorRegistry, SessionRegistry sessionRegistry) {
-        super(databaseName, cursorRegistry, sessionRegistry);
+    public H2Database(String databaseName, MVStore mvStore, CursorRegistry cursorRegistry) {
+        super(databaseName, cursorRegistry);
         this.mvStore = mvStore;
         initializeNamespacesAndIndexes();
     }
