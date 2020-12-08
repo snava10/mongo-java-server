@@ -2,11 +2,8 @@ package de.bwaldvogel.mongo.backend;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-import com.mongodb.MongoClientOptions;
-import com.mongodb.client.ClientSession;
 import org.assertj.core.api.AbstractBooleanAssert;
 import org.assertj.core.api.AbstractDoubleAssert;
 import org.assertj.core.api.AbstractIntegerAssert;
@@ -64,7 +61,7 @@ public abstract class AbstractTest {
 
     protected void dropAllDatabases() {
         for (String databaseName : syncClient.listDatabaseNames()) {
-            if (databaseName.equals("admin") || databaseName.equals("local")) {
+            if (databaseName.equals("admin") || databaseName.equals("local") || databaseName.equals("config")) {
                 continue;
             }
             syncClient.dropDatabase(databaseName);

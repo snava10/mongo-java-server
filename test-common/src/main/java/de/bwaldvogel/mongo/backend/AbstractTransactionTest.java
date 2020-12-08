@@ -1,35 +1,39 @@
 package de.bwaldvogel.mongo.backend;
 
-import com.mongodb.*;
-import com.mongodb.client.ClientSession;
-import com.mongodb.client.TransactionBody;
-import com.mongodb.client.result.UpdateResult;
-import com.mongodb.session.ServerSession;
-import org.bson.Document;
-import org.junit.jupiter.api.Test;
-
 import static com.mongodb.client.model.Updates.set;
 import static de.bwaldvogel.mongo.backend.TestUtils.json;
 
+import org.bson.Document;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.mongodb.ReadConcern;
+import com.mongodb.ReadPreference;
+import com.mongodb.TransactionOptions;
+import com.mongodb.WriteConcern;
+import com.mongodb.client.ClientSession;
+
 public abstract class AbstractTransactionTest extends AbstractTest {
+
+    private static final Logger log = LoggerFactory.getLogger(AbstractTransactionTest.class);
 
     @Test
     public void testSimpleTransaction() {
+        collection.insertOne(json("_id: 100, value: 1"));
         ClientSession clientSession = syncClient.startSession();
         TransactionOptions txnOptions = TransactionOptions.builder()
             .readPreference(ReadPreference.primary())
             .readConcern(ReadConcern.LOCAL)
             .writeConcern(WriteConcern.MAJORITY)
             .build();
-
-        TransactionBody txnBody = (TransactionBody<String>) () -> {
-            collection.insertOne(clientSession, json("_id: 1, name: \"testDoc\""));
-            return "Inserted into collection";
-        };
+        clientSession.startTransaction(txnOptions);
+        collection.insertOne(clientSession, json("_id: 1, name: \"testDoc\""));
 
         try {
-            clientSession.withTransaction(txnBody, txnOptions);
+            clientSession.commitTransaction();
         } catch (RuntimeException e) {
+            log.error(e.getMessage());
             // some error handling
         } finally {
             clientSession.close();
