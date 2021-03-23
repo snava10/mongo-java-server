@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
+import java.util.concurrent.TimeUnit;
+
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonTimestamp;
@@ -403,4 +405,27 @@ public abstract class AbstractOplogTest extends AbstractTest {
         assertThat(streamSubscriber.getSingleValue().getFullDocument().get("bu")).isEqualTo("abc");
     }
 
+    @Test
+    public void testConcurrentChangeStreams() throws Exception {
+        TestSubscriber<Success> insertSubscriber = new TestSubscriber<>();
+        asyncCollection.insertOne(json("_id: 1")).subscribe(insertSubscriber);
+        insertSubscriber.awaitTerminalEvent();
+
+        TestSubscriber<ChangeStreamDocument<Document>> streamSubscriber = new TestSubscriber<>();
+        TestSubscriber<ChangeStreamDocument<Document>> streamSubscriberDoesNotMatch = new TestSubscriber<>();
+
+        Bson filter = match(Filters.eq("fullDocument.bu", "abc"));
+        List<Bson> pipeline = singletonList(filter);
+
+        asyncCollection.watch(pipeline).subscribe(streamSubscriberDoesNotMatch);
+        asyncCollection.watch().subscribe(streamSubscriber);
+
+        insertSubscriber = new TestSubscriber<>();
+        asyncCollection.insertOne(json("_id: 2, bu: 'xyz'")).subscribe(insertSubscriber);
+        insertSubscriber.awaitTerminalEvent();
+
+        streamSubscriber.awaitTerminalEvent(2, TimeUnit.SECONDS);
+        assertThat(streamSubscriber.values().size()).isEqualTo(1);
+        assertThat(streamSubscriberDoesNotMatch.values().isEmpty()).isTrue();
+    }
 }
