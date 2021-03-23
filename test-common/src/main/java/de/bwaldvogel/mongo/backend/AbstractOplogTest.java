@@ -417,8 +417,12 @@ public abstract class AbstractOplogTest extends AbstractTest {
         Bson filter = match(Filters.eq("fullDocument.bu", "abc"));
         List<Bson> pipeline = singletonList(filter);
 
+        Bson filter2 = match(Filters.eq("fullDocument.bu", "xyz"));
+        List<Bson> pipeline2 = singletonList(filter2);
+
+        asyncCollection.watch(pipeline2).subscribe(streamSubscriber);
+        Thread.sleep(2000);
         asyncCollection.watch(pipeline).subscribe(streamSubscriberDoesNotMatch);
-        asyncCollection.watch().subscribe(streamSubscriber);
 
         insertSubscriber = new TestSubscriber<>();
         asyncCollection.insertOne(json("_id: 2, bu: 'xyz'")).subscribe(insertSubscriber);
@@ -426,6 +430,7 @@ public abstract class AbstractOplogTest extends AbstractTest {
 
         streamSubscriber.awaitTerminalEvent(2, TimeUnit.SECONDS);
         assertThat(streamSubscriber.values().size()).isEqualTo(1);
+        streamSubscriberDoesNotMatch.awaitTerminalEvent(2, TimeUnit.SECONDS);
         assertThat(streamSubscriberDoesNotMatch.values().isEmpty()).isTrue();
     }
 }
