@@ -406,31 +406,28 @@ public abstract class AbstractOplogTest extends AbstractTest {
     }
 
     @Test
-    public void testConcurrentChangeStreams() throws Exception {
+    public void testOplogShouldFilterNamespaceOnChangeStreams() throws Exception {
         TestSubscriber<Success> insertSubscriber = new TestSubscriber<>();
+        com.mongodb.reactivestreams.client.MongoCollection<Document> asyncCollection1 =
+            asyncDb.getCollection(asyncCollection.getNamespace().getCollectionName() + "1");
+
         asyncCollection.insertOne(json("_id: 1")).subscribe(insertSubscriber);
-        insertSubscriber.awaitTerminalEvent();
+        asyncCollection1.insertOne(json("_id: 1")).subscribe(insertSubscriber);
+
+        insertSubscriber.awaitTerminalEvent(1, TimeUnit.SECONDS);
 
         TestSubscriber<ChangeStreamDocument<Document>> streamSubscriber = new TestSubscriber<>();
-        TestSubscriber<ChangeStreamDocument<Document>> streamSubscriberDoesNotMatch = new TestSubscriber<>();
+        Bson filter = match(Filters.eq("fullDocument.a", 1));
+        asyncCollection.watch(singletonList(filter)).subscribe(streamSubscriber);
 
-        Bson filter = match(Filters.eq("fullDocument.bu", "abc"));
-        List<Bson> pipeline = singletonList(filter);
-
-        Bson filter2 = match(Filters.eq("fullDocument.bu", "xyz"));
-        List<Bson> pipeline2 = singletonList(filter2);
-
-        asyncCollection.watch(pipeline2).subscribe(streamSubscriber);
-        Thread.sleep(2000);
-        asyncCollection.watch(pipeline).subscribe(streamSubscriberDoesNotMatch);
+        // Necessary to give time for the change stream to start before the below insert operation is executed.
+        Thread.sleep(50);
 
         insertSubscriber = new TestSubscriber<>();
-        asyncCollection.insertOne(json("_id: 2, bu: 'xyz'")).subscribe(insertSubscriber);
-        insertSubscriber.awaitTerminalEvent();
+        asyncCollection1.insertOne(json("_id: 2, a: 1")).subscribe(insertSubscriber);
+        insertSubscriber.awaitTerminalEvent(1, TimeUnit.SECONDS);
 
-        streamSubscriber.awaitTerminalEvent(2, TimeUnit.SECONDS);
-        assertThat(streamSubscriber.values().size()).isEqualTo(1);
-        streamSubscriberDoesNotMatch.awaitTerminalEvent(2, TimeUnit.SECONDS);
-        assertThat(streamSubscriberDoesNotMatch.values().isEmpty()).isTrue();
+        streamSubscriber.awaitTerminalEvent(1, TimeUnit.SECONDS);
+        assertThat(streamSubscriber.values()).isEmpty();
     }
 }
